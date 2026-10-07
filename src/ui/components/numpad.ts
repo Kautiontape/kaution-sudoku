@@ -1,0 +1,62 @@
+/**
+ * Digit pad. Tap = place (or pencil in notes mode); long-press = pencil without switching modes.
+ * Each key shows how many of that digit are still missing; finished digits dim out.
+ */
+import { h } from "../dom";
+import { DIGIT_COLORS } from "../palette";
+
+export interface NumpadHandlers {
+  onDigit(d: number): void;
+  onNote(d: number): void;
+}
+
+const LONG_PRESS_MS = 380;
+
+export class Numpad {
+  readonly el: HTMLElement;
+  private keys: HTMLButtonElement[] = [];
+  private counts: HTMLElement[] = [];
+
+  constructor(handlers: NumpadHandlers) {
+    this.el = h("div", { class: "numpad", role: "group", "aria-label": "Digits" });
+    for (let d = 1; d <= 9; d++) {
+      const count = h("small", null, "");
+      const key = h("button", { class: "num", type: "button", "aria-label": `Digit ${d}`, "data-digit": String(d), style: { "--dc": DIGIT_COLORS[d]! } }, h("span", null, String(d)), count);
+      let timer = 0;
+      let long = false;
+      key.addEventListener("pointerdown", (e) => {
+        long = false;
+        key.setPointerCapture?.(e.pointerId);
+        timer = window.setTimeout(() => {
+          long = true;
+          key.classList.add("long");
+          handlers.onNote(d);
+        }, LONG_PRESS_MS);
+      });
+      const end = () => {
+        clearTimeout(timer);
+        key.classList.remove("long");
+      };
+      key.addEventListener("pointerup", () => {
+        end();
+        if (!long) handlers.onDigit(d);
+      });
+      key.addEventListener("pointercancel", end);
+      key.addEventListener("contextmenu", (e) => e.preventDefault());
+      this.keys.push(key);
+      this.counts.push(count);
+      this.el.append(key);
+    }
+  }
+
+  /** remaining[d] = how many more of digit d are needed. */
+  update(remaining: number[], notesMode: boolean, active: number): void {
+    this.el.classList.toggle("notes-mode", notesMode);
+    this.keys.forEach((k, i) => {
+      const left = remaining[i + 1] ?? 0;
+      k.classList.toggle("done", left <= 0);
+      k.classList.toggle("active", active === i + 1);
+      this.counts[i]!.textContent = left > 0 ? String(left) : "✓";
+    });
+  }
+}

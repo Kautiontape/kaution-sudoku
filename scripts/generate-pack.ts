@@ -13,12 +13,15 @@ import { cpus } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodeSudoku, type SudokuPack } from "../src/engine/pack";
+import { generateQueensFor } from "../src/engine/queens/generate";
+import { encodeQueens, type QueensPack } from "../src/engine/queens/pack";
 import { generateClassic, generateKiller } from "../src/engine/puzzles";
 import { DIFFICULTIES, type Difficulty } from "../src/engine/types";
 
-type Mode = "classic" | "killer";
+type Mode = "classic" | "killer" | "queens";
 
 function generateOne(mode: Mode, difficulty: Difficulty, seed: number): unknown {
+  if (mode === "queens") return encodeQueens(generateQueensFor(difficulty, seed));
   const r = mode === "classic" ? generateClassic(difficulty, seed) : generateKiller(difficulty, seed);
   return r ? encodeSudoku(r.puzzle) : null;
 }
@@ -37,7 +40,7 @@ if (args.has("child")) {
   }
 } else {
   const modeArg = args.get("mode") ?? "all";
-  const modes: Mode[] = modeArg === "all" ? ["classic", "killer"] : [modeArg as Mode];
+  const modes: Mode[] = modeArg === "all" ? ["classic", "killer", "queens"] : [modeArg as Mode];
   const diffArg = args.get("difficulty") ?? "all";
   const difficulties = diffArg === "all" ? [...DIFFICULTIES] : [diffArg as Difficulty];
   const count = Number(args.get("count") ?? 60);
@@ -82,8 +85,11 @@ if (args.has("child")) {
               }),
           ),
       );
-      const entries = seeds.map((s) => results.get(s)).filter(Boolean) as SudokuPack["puzzles"];
-      const pack: SudokuPack = { version: 1, mode, difficulty, puzzles: entries };
+      const entries = seeds.map((s) => results.get(s)).filter(Boolean);
+      const pack: SudokuPack | QueensPack =
+        mode === "queens"
+          ? { version: 1, mode, difficulty, puzzles: entries as QueensPack["puzzles"] }
+          : { version: 1, mode, difficulty, puzzles: entries as SudokuPack["puzzles"] };
       const file = join(outDir, `${mode}-${difficulty}.json`);
       writeFileSync(file, JSON.stringify(pack) + "\n");
       console.log(`\n${file}: ${entries.length}/${count} puzzles in ${((performance.now() - t0) / 1000).toFixed(1)}s`);
