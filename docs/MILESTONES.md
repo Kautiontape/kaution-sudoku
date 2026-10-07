@@ -10,7 +10,7 @@ Each milestone ends with `npm run check` green (typecheck + lint-free build + al
 ## M1 — Exact solver + candidates
 - `candidates.ts`: true candidates from (puzzle, placed digits), honoring row/col/box/cage-no-repeat and cage-combo feasibility.
 - `exact.ts`: `countSolutions(puzzle, limit=2)` and `solve(puzzle)`.
-- Tests: solves the fixture in `tests/fixtures/`; detects a deliberately ambiguous puzzle (2 solutions); property test: for 50 random seeded generated grids, any cage layout derived from the solution yields that solution among its solutions.
+- Tests: `tests/fixtures/patterned.json` is deliberately NOT unique, so `countSolutions` must return 2 and `solve` must return a valid solution; add a unique-solution fixture (hand-entered from a known puzzle, or the first M2 output) and check it solves to its stored solution; property test: for 50 random seeded generated grids, any cage layout derived from the solution yields that solution among its solutions.
 
 ## M2 — Generator v0
 - Seeded PRNG (`mulberry32` or similar), solved-grid shuffler, cage partitioner, uniqueness loop.
