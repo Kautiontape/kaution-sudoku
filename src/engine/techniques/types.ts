@@ -15,6 +15,11 @@ export interface Technique {
   /** Only meaningful for killer puzzles (needs cages). */
   killerOnly?: boolean;
   /**
+   * Not valid for killer puzzles. Uniqueness patterns (unique rectangles, BUG+1) argue that a
+   * digit swap would give a second solution; in killer, swapping digits can break cage sums.
+   */
+  classicOnly?: boolean;
+  /**
    * Relies on the puzzle having exactly one solution (unique rectangles, BUG+1). Excluded when the
    * logical solver is used to *prove* uniqueness (killer generation).
    */

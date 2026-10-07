@@ -21,6 +21,7 @@ export interface LogicalOptions {
 export function nextStep(s: SolverState, opts: LogicalOptions = {}): Step | null {
   for (const t of opts.techniques ?? TECHNIQUES) {
     if (t.killerOnly && s.kind !== "killer") continue;
+    if (t.classicOnly && s.kind !== "classic") continue;
     if (opts.maxTier !== undefined && t.tier > opts.maxTier) continue;
     if (opts.noUniqueness && t.assumesUnique) continue;
     const step = t.find(s);
