@@ -51,3 +51,51 @@ export const PEERS: CellId[][] = Array.from({ length: 81 }, (_, c) => {
 export function sharesHouse(a: CellId, b: CellId): boolean {
   return rowOf(a) === rowOf(b) || colOf(a) === colOf(b) || boxOf(a) === boxOf(b);
 }
+
+/** Flat house index 0..26: rows 0-8, cols 9-17, boxes 18-26 (same order as ALL_HOUSES). */
+export function houseIndex(h: House): number {
+  return (h.kind === "row" ? 0 : h.kind === "col" ? 9 : 18) + h.index;
+}
+export function houseAt(i: number): House {
+  return { kind: i < 9 ? "row" : i < 18 ? "col" : "box", index: i % 9 };
+}
+
+/** HOUSE_CELLS[houseIndex] = the 9 cells of that house. */
+export const HOUSE_CELLS: CellId[][] = ALL_HOUSES.map(houseCells);
+
+/** CELL_HOUSES[cell] = [rowHouse, colHouse, boxHouse] as flat house indices. */
+export const CELL_HOUSES: [number, number, number][] = Array.from({ length: 81 }, (_, c) => [
+  rowOf(c),
+  9 + colOf(c),
+  18 + boxOf(c),
+]);
+
+const BOX_NAMES = [
+  "top-left",
+  "top-middle",
+  "top-right",
+  "middle-left",
+  "center",
+  "middle-right",
+  "bottom-left",
+  "bottom-middle",
+  "bottom-right",
+];
+
+/** User-facing house name usable mid-sentence: "row 3", "column 4", "the top-left box". */
+export function houseName(h: House): string {
+  if (h.kind === "row") return `row ${h.index + 1}`;
+  if (h.kind === "col") return `column ${h.index + 1}`;
+  return `the ${BOX_NAMES[h.index]} box`;
+}
+
+export function sameHouse(a: House, b: House): boolean {
+  return a.kind === b.kind && a.index === b.index;
+}
+
+/** The houses (as flat indices) that contain every given cell. */
+export function commonHouses(cells: readonly CellId[]): number[] {
+  if (cells.length === 0) return [];
+  const [r, c, b] = CELL_HOUSES[cells[0]!]!;
+  return [r, c, b].filter((h) => cells.every((x) => CELL_HOUSES[x]!.includes(h)));
+}
