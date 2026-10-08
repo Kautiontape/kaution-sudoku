@@ -1,5 +1,4 @@
 import "@fontsource-variable/outfit";
-import "@fontsource-variable/exo-2";
 import "@fontsource-variable/exo-2/wght-italic.css";
 import "./ui/style.css";
 import { DIFFICULTIES, type Difficulty } from "./engine/types";
@@ -38,7 +37,7 @@ app.onError = (message) => toast(message, "bad");
 addEventListener("pointerdown", () => sound.unlock(), { capture: true, once: true });
 
 // Offline play once installed. Skipped in dev and wherever service workers aren't allowed.
-if (import.meta.env.PROD && "serviceWorker" in navigator && location.protocol === "https:")
+if (import.meta.env.PROD && import.meta.env.VITE_TARGET !== "artifact" && "serviceWorker" in navigator && location.protocol === "https:")
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 
 // ?play=killer-medium jumps straight into a game (handy for sharing and for tests).

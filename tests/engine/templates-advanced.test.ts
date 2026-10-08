@@ -179,7 +179,7 @@ describe("advanced hint text", () => {
       "Chain those pairs together: r1c2–r1c7 (row 1), r1c7–r5c7 (column 7), r5c7–r5c4 (row 5), r5c4–r8c4 (column 4) and r8c4–r8c1 (row 8).",
     );
     expect(text.why[2]).toBe(
-      "Colour the cells alternately along the chain. One colour: r1c2, r5c7 and r8c4. The other: r1c7, r5c4 and r8c1. One colour is all 6s and the other has none.",
+      "Colour the cells alternately along the chain: green on r1c2, r5c7 and r8c4, purple on r1c7, r5c4 and r8c1. One colour is all 6s and the other has none.",
     );
     expect(text.why).toContain("The same goes for r7c2 and r9c2: each sees both colours.");
   });

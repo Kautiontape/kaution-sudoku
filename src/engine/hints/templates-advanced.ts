@@ -300,7 +300,7 @@ const simpleColoring: Template = (step, { puzzle }) => {
   const why = [
     `When a row, column or box has only two places for ${d}, exactly one of them is ${d}.`,
     `Chain those pairs together: ${list(e.links.map((l) => `${cellName(l.a)}–${cellName(l.b)} (${houseName(l.house)})`))}.`,
-    `Colour the cells alternately along the chain. One colour: ${cellList(e.on)}. The other: ${cellList(e.off)}. One colour is all ${d}s and the other has none.`,
+    `Colour the cells alternately along the chain: green on ${cellList(e.on)}, purple on ${cellList(e.off)}. One colour is all ${d}s and the other has none.`,
   ];
   if (e.rule === "wrap") {
     const [a, b] = e.clash!.cells;

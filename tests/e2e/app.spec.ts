@@ -130,6 +130,21 @@ test("learn and settings overlays open and close", async ({ page }) => {
   await expect(page.getByTestId("settings").locator('input[data-key="haptics"]')).not.toBeChecked();
 });
 
+test("learn cards show a worked example on a real board", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("open-learn").click();
+  const card = page.locator("#tech-hidden-single");
+  await card.locator("summary").click();
+  await card.getByTestId("example-hidden-single").click();
+  await expect(card.locator(".example .board .cell")).toHaveCount(81);
+  await expect(card.locator(".example-do")).toContainText("Place");
+  await page.getByRole("tab", { name: "Queens" }).click();
+  const q = page.locator("#tech-last-cell");
+  await q.locator("summary").click();
+  await q.getByTestId("example-last-cell").click();
+  await expect(q.locator(".example .qcell").first()).toBeVisible();
+});
+
 test("progress resumes after reload", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   await applyNextHint(page);
