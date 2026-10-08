@@ -50,6 +50,8 @@ export class Numpad {
         if (!long) handlers.onDigit(d);
       });
       key.addEventListener("pointercancel", end);
+      // A keyboard press on a focused key arrives as a click with no pointer (detail 0).
+      key.addEventListener("click", (e) => e.detail === 0 && handlers.onDigit(d));
       key.addEventListener("contextmenu", (e) => e.preventDefault());
       this.keys.push(key);
       this.counts.push(count);

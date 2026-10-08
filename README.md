@@ -23,7 +23,8 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
   for any row, column or box ("45 − (22+10) = 13, so r4c4 + r6c5 = 13") and rings the cells.
 - **Comfortable input.** Hold a digit to light it up across the grid; drag (or Shift / Ctrl-click)
   to select several cells, then pencil a digit into all of them or erase them all at once;
-  auto-notes; unlimited undo; keyboard on desktop (Shift+digit for notes). In Queens: tap for ✕ (tap again to
+  auto-notes; unlimited undo. On desktop: Shift+digit pencils, Space toggles notes, Shift+arrow
+  or Shift/Ctrl-click selects several, H / Enter climb the hint, Esc steps back, Ctrl+Z / Y. In Queens: tap for ✕ (tap again to
   take it off), double-tap for a queen, hold to clear, drag to ✕ many.
 - **Levels that keep coming.** Finish one and the next drops in on its own — with one of eight
   themed entrances (Warp, Rain, Ripple, Deal, Vortex, Shards, Hologram, Nova) — while a

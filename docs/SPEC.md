@@ -57,8 +57,16 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
   auto-✕ still show, which is the point of trying a queen. Undo stops at the snapshot; hints and
   saves read the real board. **Wipe** (or switching the tool off) restores the snapshot exactly;
   **Keep** makes the scratch real as one undo step, checked like any other move.
-- Keyboard: digits, Shift/Alt+digit for notes, arrows, Backspace, N (notes), H (hint),
-  Ctrl+Z / Ctrl+Shift+Z.
+- Keyboard (sudoku / killer): 1–9 place, Shift+digit pencils (read from the physical key, so it
+  works on any layout); Space or N toggles Notes; arrows move (wrapping), Shift+arrow — like
+  Shift / Ctrl / ⌘-click — adds cells to the selection; Backspace / Delete / 0 erase the
+  selection; H opens the hint or shows the next rung, Enter does what the sheet's main button
+  does (next rung, or apply); L cycles the Σ45 lens (killer); Esc steps back one layer (game menu
+  → hint → lens → several cells → the selection); Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z or Ctrl+Y redo.
+  Queens: H, Enter, Esc, S (Scratch on / off), Ctrl/⌘+Z / Y. Bare-key shortcuts ignore
+  Ctrl/⌘/Alt (those combinations stay the browser's: tabs, history, save) and held-key repeats
+  (except arrows and erase). A solved puzzle can't be undone. Clicking a control doesn't leave
+  focus on it, so Space / Enter never re-press it.
 - Games autosave per mode; "Continue" on the home screen resumes.
 
 ### Mistakes that teach

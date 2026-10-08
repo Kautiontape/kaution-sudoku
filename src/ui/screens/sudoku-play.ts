@@ -82,6 +82,7 @@ class SudokuPlay implements Screen {
   private saveTimer = 0;
   /** After a solve: the countdown to the next level. */
   private advanceTimer = 0;
+  private finished = false;
   private offs: (() => void)[] = [];
   private lastPlaced: CellId = 40;
   /** Set when this game is being thrown away (restart): skip the final save. */
@@ -211,6 +212,7 @@ class SudokuPlay implements Screen {
       this.advanceTimer = window.setTimeout(() => this.advance(), 600);
       return;
     }
+    clearTimeout(this.advanceTimer);
     const ms = leaveLevel(this.board.stage(), this.app);
     this.advanceTimer = window.setTimeout(() => void this.app.play(this.mode, this.difficulty, false, this.puzzle.id), ms);
   }
@@ -389,6 +391,13 @@ class SudokuPlay implements Screen {
     sound.unlock();
     this.peekDigit = 0;
     const c = this.selected;
+    if (this.multi.length > 1) {
+      if (this.sheet.isOpen) this.closeHint();
+      this.game.toggleNoteMany(this.multi, d);
+      this.activeDigit = d;
+      this.render();
+      return;
+    }
     if (c === null || this.game.given[c]) {
       this.activeDigit = this.activeDigit === d ? 0 : d;
       sound.ui("tap");
@@ -396,12 +405,6 @@ class SudokuPlay implements Screen {
       return;
     }
     if (this.sheet.isOpen) this.closeHint();
-    if (this.multi.length > 1) {
-      this.game.toggleNoteMany(this.multi, d);
-      this.activeDigit = d;
-      this.render();
-      return;
-    }
     if (asNote || this.notesMode) {
       if (this.game.grid[c]) return;
       this.game.toggleNote(c, d);
@@ -432,40 +435,73 @@ class SudokuPlay implements Screen {
     toast(this.mode === "killer" ? "Notes filled in — cage sums applied." : "Notes filled with every possible digit.");
   }
 
+  /**
+   * Desktop keys. Undo/redo use Ctrl/⌘; every other shortcut is a bare key, so Ctrl/⌘/Alt
+   * combinations stay the browser's (tab switching, history, save…). A held key acts once, except
+   * the arrows and erase. A focused button or field keeps Space and Enter for itself.
+   */
   private onKey(e: KeyboardEvent): void {
     if (document.querySelector(".overlay")) return;
     const k = e.key;
-    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === "z") {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.altKey && (k.toLowerCase() === "z" || k.toLowerCase() === "y")) {
       e.preventDefault();
-      if (e.shiftKey) this.game.redo();
+      if (k.toLowerCase() === "y" || e.shiftKey) this.game.redo();
       else this.game.undo();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === "y") {
-      e.preventDefault();
-      this.game.redo();
+    if (mod || e.altKey) return;
+    const onControl = !!(e.target as Element | null)?.closest?.("button, input, select, textarea, [contenteditable]");
+    if (k === "Escape") return this.escape();
+    if (k === "Enter") {
+      if (this.sheet.isOpen && !onControl) {
+        e.preventDefault();
+        this.sheet.primary();
+      }
       return;
     }
-    // Read the physical key too: with Shift held a US keyboard sends "$" for 4, not "4".
-    const digit = /^[1-9]$/.test(k) ? Number(k) : Number(/^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1] ?? 0);
-    if (digit) return this.onDigit(digit, e.shiftKey || e.altKey);
+    const repeats = k === "Backspace" || k === "Delete" || k.startsWith("Arrow");
+    if (e.repeat && !repeats) return;
+    // Digits: the key itself, or — when Shift turned it into a symbol ("$" for 4 on a US keyboard)
+    // — the physical key. Only printable keys: a NumLock-off keypad sends arrows, which move.
+    const digit = /^[1-9]$/.test(k) ? Number(k) : k.length === 1 ? Number(/^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1] ?? 0) : 0;
+    if (digit) return this.onDigit(digit, e.shiftKey);
     if (k === "Backspace" || k === "Delete" || k === "0") {
       e.preventDefault();
       return this.erase();
     }
-    if (k === "n" || k === "N") return this.toggleNotes();
+    if (k === "n" || k === "N" || (k === " " && !onControl)) {
+      e.preventDefault();
+      return this.toggleNotes();
+    }
     if (k === "h" || k === "H") return this.sheet.isOpen ? this.sheet.advance() : this.openHint();
-    if (k === "Escape" && this.sheet.isOpen) return this.closeHint();
+    if ((k === "l" || k === "L") && this.mode === "killer") return this.setLens(LENS_CYCLE[this.lensKind ?? "off"]);
     const moves: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
     const mv = moves[k];
     if (mv) {
       e.preventDefault();
-      const c = this.selected ?? 40;
-      const r = (rowOf(c) + mv[0] + 9) % 9;
-      const col = (colOf(c) + mv[1] + 9) % 9;
-      this.selected = r * 9 + col;
+      const from = this.selected ?? 40;
+      const next = ((rowOf(from) + mv[0] + 9) % 9) * 9 + ((colOf(from) + mv[1] + 9) % 9);
+      if (e.shiftKey) {
+        // Shift+arrow grows the selection, like Shift-click.
+        const set = this.multi.length ? [...this.multi] : this.selected !== null ? [this.selected] : [];
+        if (!set.includes(next)) set.push(next);
+        this.multi = set.length > 1 ? set : [];
+      } else this.multi = [];
+      this.selected = next;
+      this.peekDigit = 0;
       this.render();
     }
+  }
+
+  /** Esc steps back one layer at a time: hint → Σ45 lens → several cells → the selection. */
+  private escape(): void {
+    if (this.sheet.isOpen) return this.closeHint();
+    if (this.lensKind) return this.setLens(null);
+    this.peekDigit = 0;
+    if (this.multi.length > 1) this.multi = [];
+    else this.selected = null;
+    this.render();
   }
 
   // ------------------------------------------------------------------------------------------
@@ -575,6 +611,8 @@ class SudokuPlay implements Screen {
   }
 
   private finale(): void {
+    if (this.finished) return; // a level is scored once
+    this.finished = true;
     const g = this.game;
     this.el.dataset.solved = "true";
     const fx = this.app.fx;
@@ -682,7 +720,13 @@ class SudokuPlay implements Screen {
   }
 
   private openMenu(): void {
-    const close = () => menu.remove();
+    // Esc closes it; focus starts on the first item for keyboard players.
+    const close = () => {
+      menu.remove();
+      removeEventListener("keydown", onEsc);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && close();
+    addEventListener("keydown", onEsc);
     const item = (label: string, icon: string, fn: () => void) =>
       h("button", { class: "menu-item", type: "button", onclick: () => (close(), fn()) }, svgIcon(icon), label);
     const menu = h(
@@ -705,11 +749,15 @@ class SudokuPlay implements Screen {
       ),
     );
     document.body.append(menu);
+    menu.querySelector<HTMLElement>(".menu-item")?.focus();
   }
 }
 
 /** From the solve to the next level: the fireworks play and the finale's chord resolves first. */
 const ADVANCE_MS = 2400;
+
+/** L cycles the Σ45 lens: row → column → box → off. */
+const LENS_CYCLE: Record<"off" | "row" | "col" | "box", "row" | "col" | "box" | null> = { off: "row", row: "col", col: "box", box: null };
 
 /** Most open cells the lens will treat as a readable sum. */
 const LENS_MAX = 4;

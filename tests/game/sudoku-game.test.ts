@@ -154,6 +154,18 @@ describe("SudokuGame", () => {
     expect(restored.known[cell("r1c3")]).toBe(maskOf([1]));
   });
 
+  it("a solved puzzle stays solved: undo and redo do nothing", () => {
+    const g = new SudokuGame(WIKI);
+    const sol = WIKI.solution!;
+    for (let c = 0; c < 81; c++) if (!g.grid[c]) g.place(c, Number(sol[c]));
+    expect(g.solved).toBe(true);
+    const events = track(g);
+    g.undo();
+    g.redo();
+    expect(g.solved).toBe(true);
+    expect(events.filter((e) => e.type === "solved")).toHaveLength(0);
+  });
+
   it("serializes and restores progress", () => {
     const g = new SudokuGame(WIKI);
     g.place(cell("r1c3"), 4);

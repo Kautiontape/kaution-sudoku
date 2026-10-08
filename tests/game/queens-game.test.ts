@@ -159,6 +159,17 @@ describe("QueensGame scratch", () => {
     expect(g.marks[3]).toBe(EMPTY);
   });
 
+  it("a solved puzzle stays solved: undo and redo do nothing", () => {
+    const g = new QueensGame(P);
+    for (const c of SOLUTION) g.setMark(c, QUEEN);
+    expect(g.solved).toBe(true);
+    const events = track(g);
+    g.undo();
+    g.redo();
+    expect(g.solved).toBe(true);
+    expect(events).toEqual([]);
+  });
+
   it("keeping a scratch that finishes the puzzle solves it", () => {
     const g = new QueensGame(P);
     for (const c of SOLUTION.slice(0, 5)) g.setMark(c, QUEEN);

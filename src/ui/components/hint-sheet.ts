@@ -48,6 +48,7 @@ export class HintSheet {
       this.body,
       this.actions,
     );
+    this.el.inert = true; // off-screen until opened: keep its buttons out of the Tab order
   }
 
   get isOpen(): boolean {
@@ -62,12 +63,14 @@ export class HintSheet {
     this.hint = hint;
     this.rung = 0;
     this.el.classList.add("open");
+    this.el.inert = false;
     this.el.dataset.kind = hint.kind;
     this.advance();
   }
 
   close(): void {
     this.el.classList.remove("open");
+    this.el.inert = true;
     this.hint = null;
     this.rung = 0;
   }
@@ -126,6 +129,14 @@ export class HintSheet {
       buttons.push(h("button", { class: "btn primary", type: "button", "data-testid": "hint-apply", onclick: () => this.handlers.onApply() }, svgIcon(ICONS.check), "Apply"));
     }
     this.actions.replaceChildren(...buttons);
+  }
+
+  /** What the main button does right now (Enter): the next rung, or apply. */
+  primary(): void {
+    if (!this.hint || this.hint.kind === "solved") return;
+    if (this.rung >= 4) this.handlers.onApply();
+    else if (this.rung === 3) this.applyNow();
+    else this.advance();
   }
 
   /** Rung 3 → reveal "Do" and apply in one tap. */

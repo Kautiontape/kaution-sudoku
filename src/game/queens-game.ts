@@ -313,8 +313,9 @@ export class QueensGame {
     if (changed.length) this.emit({ type: "marks", cells: changed.map((c) => c.cell) });
   }
 
+  /** Once solved, history is closed: undoing and redoing would solve the puzzle (and score it) twice. */
   undo(): void {
-    if (!this.canUndo()) return;
+    if (this.solved || !this.canUndo()) return;
     const e = this.undoStack.pop();
     if (!e) return;
     this.lastTap = this.paintEntry = null;
@@ -325,6 +326,7 @@ export class QueensGame {
   }
 
   redo(): void {
+    if (this.solved) return;
     const e = this.redoStack.pop();
     if (!e) return;
     this.lastTap = this.paintEntry = null;

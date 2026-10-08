@@ -49,6 +49,15 @@ window.addEventListener(
   { capture: true },
 );
 
+// A mouse click shouldn't leave focus on a game control, or Space / Enter would press it again.
+addEventListener(
+  "mousedown",
+  (e: MouseEvent) => {
+    if ((e.target as Element | null)?.closest?.(".tool, .num, .icon-btn, .qchip, .lens-btn, .lens-chip, .hs-actions .btn")) e.preventDefault();
+  },
+  { capture: true },
+);
+
 // Browsers only allow audio after a gesture: unlock on the first touch anywhere.
 addEventListener("pointerdown", () => sound.unlock(), { capture: true, once: true });
 

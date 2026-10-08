@@ -130,6 +130,48 @@ test("Backspace erases in the game and never navigates the browser back", async 
   expect(page.url()).toContain("play=classic-easy");
 });
 
+test("desktop keys: Enter climbs the hint, Esc steps back, browser combos and held keys are left alone", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const board = await readBoard(page);
+  const key = (init: Record<string, string | boolean>) =>
+    page.evaluate((i) => void dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, ...(i as KeyboardEventInit) })), init);
+  const sheet = page.getByTestId("hint-sheet");
+  await page.keyboard.press("h");
+  await expect(sheet).toHaveClass(/open/);
+  await page.keyboard.press("Enter"); // the sheet's main button: → what
+  await expect(sheet.locator(".rung-2")).toBeVisible();
+  await key({ key: "h", repeat: true }); // a held H doesn't race to the answer
+  await expect(sheet.locator(".rung-3")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(sheet).not.toHaveClass(/open/);
+  await key({ key: "h", ctrlKey: true }); // Ctrl+H is the browser's (history)
+  await expect(sheet).not.toHaveClass(/open/);
+  // Shift+arrow grows the selection; Esc lets go of the cells, then of the cell.
+  const empty = board.find((x) => !x.value)!;
+  await cellLocator(page, empty.cell).click();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect(page.locator(".cell.msel")).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cell.msel")).toHaveCount(0);
+  await expect(page.locator(".cell.sel")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cell.sel")).toHaveCount(0);
+  // A keypad with NumLock off sends arrows (code Numpad6): they move, they don't type a 6.
+  await cellLocator(page, empty.cell).click();
+  await key({ key: "ArrowRight", code: "Numpad6" });
+  await expect(cellLocator(page, empty.cell).locator(".v")).toHaveText("");
+  await page.keyboard.press("Space"); // notes on
+  await expect(page.locator(".play.notes-mode")).toHaveCount(1);
+  // Queens: Ctrl+S is the browser's (save page), a bare S is Scratch.
+  await page.goto("/?play=queens-easy");
+  await expect(page.locator(".qcell").first()).toBeVisible();
+  await key({ key: "s", ctrlKey: true });
+  await expect(page.locator(".play.scratch-mode")).toHaveCount(0);
+  await page.keyboard.press("s");
+  await expect(page.locator(".play.scratch-mode")).toHaveCount(1);
+});
+
 test("hint ladder climbs where → what → why and applies a step", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   await page.getByTestId("tool-hint").click();

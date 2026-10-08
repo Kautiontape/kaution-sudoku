@@ -280,7 +280,9 @@ export class SudokuGame {
     this.emit({ type: "notes", cells: changes.map((ch) => ch.cell) });
   }
 
+  /** Once solved, history is closed: undoing and redoing would solve the puzzle (and score it) twice. */
   undo(): void {
+    if (this.solved) return;
     const e = this.undoStack.pop();
     if (!e) return;
     for (const ch of e.changes) {
@@ -293,6 +295,7 @@ export class SudokuGame {
   }
 
   redo(): void {
+    if (this.solved) return;
     const e = this.redoStack.pop();
     if (!e) return;
     for (const ch of e.changes) {

@@ -67,6 +67,7 @@ class QueensPlay implements Screen {
   private tick = 0;
   /** After a solve: the countdown to the next level. */
   private advanceTimer = 0;
+  private finished = false;
   private offs: (() => void)[] = [];
   private discard = false;
   private last: QCell = 0;
@@ -136,15 +137,25 @@ class QueensPlay implements Screen {
       this.game.settings.checkMistakes = settings().checkMistakes;
       this.render();
     }));
+    // Undo/redo use Ctrl/⌘; the rest are bare keys (Ctrl/⌘/Alt combinations stay the browser's),
+    // acting once per press. A focused button keeps Enter for itself.
     const onKey = (e: KeyboardEvent) => {
       if (document.querySelector(".overlay")) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      const k = e.key;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.altKey && (k.toLowerCase() === "z" || k.toLowerCase() === "y")) {
         e.preventDefault();
-        if (e.shiftKey) this.game.redo();
+        if (k.toLowerCase() === "y" || e.shiftKey) this.game.redo();
         else this.game.undo();
-      } else if (e.key === "h" || e.key === "H") this.sheet.isOpen ? this.sheet.advance() : this.openHint();
-      else if (e.key === "s" || e.key === "S") this.toggleScratch();
-      else if (e.key === "Escape" && this.sheet.isOpen) this.closeHint();
+        return;
+      }
+      if (mod || e.altKey || e.repeat) return;
+      if (k === "Escape" && this.sheet.isOpen) this.closeHint();
+      else if (k === "Enter" && this.sheet.isOpen && !(e.target as Element | null)?.closest?.("button")) {
+        e.preventDefault();
+        this.sheet.primary();
+      } else if (k === "h" || k === "H") this.sheet.isOpen ? this.sheet.advance() : this.openHint();
+      else if (k === "s" || k === "S") this.toggleScratch();
     };
     addEventListener("keydown", onKey);
     this.offs.push(() => removeEventListener("keydown", onKey));
@@ -177,6 +188,7 @@ class QueensPlay implements Screen {
       this.advanceTimer = window.setTimeout(() => this.advance(), 600);
       return;
     }
+    clearTimeout(this.advanceTimer);
     const ms = leaveLevel(this.board.stage(), this.app);
     this.advanceTimer = window.setTimeout(() => void this.app.play("queens", this.difficulty, false, this.puzzle.id), ms);
   }
@@ -375,6 +387,8 @@ class QueensPlay implements Screen {
   }
 
   private finale(): void {
+    if (this.finished) return; // a level is scored once
+    this.finished = true;
     const g = this.game;
     this.el.dataset.solved = "true";
     this.closeHint();
@@ -452,7 +466,13 @@ class QueensPlay implements Screen {
   }
 
   private openMenu(): void {
-    const close = () => menu.remove();
+    // Esc closes it; focus starts on the first item for keyboard players.
+    const close = () => {
+      menu.remove();
+      removeEventListener("keydown", onEsc);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && close();
+    addEventListener("keydown", onEsc);
     const item = (label: string, icon: string, fn: () => void) =>
       h("button", { class: "menu-item", type: "button", onclick: () => (close(), fn()) }, svgIcon(icon), label);
     const menu = h(
@@ -473,6 +493,7 @@ class QueensPlay implements Screen {
       ),
     );
     document.body.append(menu);
+    menu.querySelector<HTMLElement>(".menu-item")?.focus();
   }
 }
 
