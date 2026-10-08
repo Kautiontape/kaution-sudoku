@@ -19,7 +19,7 @@ const GROUPS: { title: string; rows: { key: BoolKey; label: string; hint?: strin
     title: "Play",
     rows: [
       { key: "checkMistakes", label: "Flag mistakes instantly", hint: "Explains why a digit is wrong." },
-      { key: "autoClearNotes", label: "Auto-remove notes", hint: "Placing a digit clears it from nearby notes." },
+      { key: "autoClearNotes", label: "Auto-remove notes", hint: "Placing a digit clears the notes it rules out." },
       { key: "highlightSame", label: "Highlight matching digits" },
       { key: "showTimer", label: "Show timer" },
     ],

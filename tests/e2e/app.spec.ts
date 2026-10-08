@@ -312,6 +312,48 @@ test("killer: a hint goes straight for a digit and places it", async ({ page }) 
   await expect(page.locator(".board .cell.filled")).toHaveCount(1);
 });
 
+test("killer: a round toward a digit pencils only the squares it names, and Apply writes those notes", async ({ page }) => {
+  // A fresh profile opens killer-medium-1, the board from the bug report: after two digits come
+  // three rounds of narrowing on the way to r1c3, the last ending with 9 pointing along row 2.
+  await page.goto("/?play=killer-medium");
+  await readBoard(page);
+  const sheet = page.getByTestId("hint-sheet");
+  /** Each square's notes, as the player sees them (hint pencils aside). */
+  const readNotes = () =>
+    page.$$eval(".board .cell", (els) =>
+      Object.fromEntries(els.map((el) => [(el as HTMLElement).dataset.cell!, [...el.querySelectorAll(".notes i")].flatMap((n, k) => (n.classList.contains("on") ? [k + 1] : []))])),
+    );
+  let rounds = 0;
+  for (let i = 0; i < 5; i++) {
+    await page.getByTestId("tool-hint").click();
+    await page.getByTestId("hint-next").click(); // → what
+    const round = /on the way to r\dc\d/.test(await sheet.locator(".rung-2").innerText());
+    await page.getByTestId("hint-next").click(); // → why
+    await expect(page.locator(".board.hinting")).toHaveCount(1);
+    // Each square with hint pencils: whether the text names it, and the digits it keeps unstruck.
+    const drawn = await page.$$eval(".board .cell", (els) =>
+      els.flatMap((el) => {
+        const marks = [...el.querySelectorAll(".notes i")].map((n, k) => ({ d: k + 1, shown: n.matches(".on, .ghost, [class*='m-']"), struck: n.matches(".m-elim") }));
+        if (!el.querySelector(".notes i.ghost, .notes i[class*='m-']")) return [];
+        const keep = marks.filter((x) => x.shown && !x.struck).map((x) => x.d);
+        return [{ cell: String((el as HTMLElement).dataset.cell), named: el.classList.contains("h-ref"), keep }];
+      }),
+    );
+    expect(drawn.filter((x) => !x.named)).toEqual([]); // no pencils in squares the text doesn't name
+    if (round) await page.screenshot({ path: "test-results/screens/hint-round.png" });
+    const before = await readNotes();
+    await page.getByTestId("hint-next").click(); // → apply
+    await expect(sheet).not.toHaveClass(/open/);
+    if (!round) continue;
+    rounds++;
+    // The notes become what the hint drew, less what it struck — in those squares and nowhere else.
+    const after = await readNotes();
+    const expected = { ...before, ...Object.fromEntries(drawn.map((x) => [x.cell, x.keep])) };
+    expect(after).toEqual(expected);
+  }
+  expect(rounds).toBe(3);
+});
+
 test("queens: tap toggles ✕, double-tap makes a queen, hold clears; clashes are explained; hints solve it", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/?play=queens-easy");

@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
 import { maskOf } from "../../src/engine/combos";
-import type { Puzzle, Step } from "../../src/engine/types";
+import { cellName } from "../../src/engine/geometry";
+import { hintMarks } from "../../src/engine/hints/index";
+import { decodeSudoku, type SudokuPackEntry } from "../../src/engine/pack";
+import type { Digit, Puzzle, Step } from "../../src/engine/types";
 import { SudokuGame, type GameEvent } from "../../src/game/sudoku-game";
 import { cage, cell, classic } from "../engine/helpers";
 
@@ -7,6 +11,9 @@ const WIKI = classic(
   "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
   "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
 );
+
+const packPuzzle = (file: string, i: number): Puzzle =>
+  decodeSudoku((JSON.parse(readFileSync(`public/packs/${file}.json`, "utf8")) as { puzzles: SudokuPackEntry[] }).puzzles[i]!);
 
 function track(g: SudokuGame): GameEvent[] {
   const events: GameEvent[] = [];
@@ -135,23 +142,105 @@ describe("SudokuGame", () => {
     expect(g.notes[cell("r1c4")]).toBe(maskOf([2, 6]));
   });
 
-  it("remembers what a hint rules out for the next hint, never writing it into the notes", () => {
+  it("a round pencils in what it leaves, in only the squares it marks, and is remembered for the next hint", () => {
     const g = new SudokuGame(WIKI);
+    g.toggleNote(cell("r1c4"), 2); // the player's own notes (r1c4 can be 2 or 6)
+    g.toggleNote(cell("r1c4"), 6);
+    g.toggleNote(cell("r9c1"), 1); // a square the round doesn't mark
     const step = {
       technique: "pointing",
       tier: 2,
       rating: 2,
       placements: [],
-      eliminations: [{ cell: cell("r1c3"), digit: 1 as const }],
+      eliminations: [
+        { cell: cell("r1c3"), digit: 1 },
+        { cell: cell("r1c4"), digit: 2 },
+      ],
       focus: { cells: [], cages: [], houses: [] },
       explain: {},
+      marks: [
+        { cell: cell("r2c3"), digit: 2, role: "key" },
+        { cell: cell("r1c6"), digit: 2, role: "digit" },
+      ],
     } as unknown as Step;
     g.applyHint({ kind: "step", title: "Pointing", ladder: { where: "", what: "", why: [], do: "" }, step, prior: [] });
     expect(g.known[cell("r1c3")]).toBe(maskOf([1]));
-    expect(g.notes[cell("r1c3")]).toBe(0);
+    expect(g.notes[cell("r1c3")]).toBe(maskOf([2, 4])); // an empty square: its candidates (1, 2, 4), less the 1
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([6])); // the player's notes keep what's still possible
+    expect(g.notes[cell("r2c3")]).toBe(maskOf([2, 4, 7])); // the squares the reasoning uses are pencilled too
+    expect(g.notes[cell("r1c6")]).toBe(0); // "every other 2" pencils nothing
+    expect(g.notes[cell("r9c1")]).toBe(maskOf([1]));
     expect(g.hintCandidates()[cell("r1c3")]! & maskOf([1])).toBe(0);
+    g.undo(); // one step; what the hint ruled out stays known
+    expect(g.notes[cell("r1c3")]).toBe(0);
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([2, 6]));
+    expect(g.known[cell("r1c3")]).toBe(maskOf([1]));
     const restored = new SudokuGame(WIKI, JSON.parse(JSON.stringify(g.toJSON())));
     expect(restored.known[cell("r1c3")]).toBe(maskOf([1]));
+  });
+
+  it("applying a round toward a digit pencils it in — the board from the bug report", () => {
+    // killer-medium-1: the round that ends with 9 pointing out of the top-middle box. Its squares
+    // used to get no notes; now they get exactly what the hint drew, less what it struck.
+    const g = new SudokuGame(packPuzzle("killer-medium", 0));
+    let h = g.hint();
+    for (let k = 0; k < 20 && !(h.step && !h.step.placements.length && h.step.technique === "pointing"); k++) {
+      g.applyHint(h);
+      h = g.hint();
+    }
+    expect(h.ladder.what).toMatch(/on the way to r1c3\.$/);
+    expect(h.ladder.do).toBe("Pencil it in: r1c3 and r1c4 can only be 4 or 8; r2c1, r2c2 and r2c3 can't be 9.");
+    const squares = ["r1c1", "r1c2", "r1c3", "r1c4", "r2c1", "r2c2", "r2c3", "r2c4", "r2c5", "r2c6"];
+    expect([...new Set(hintMarks(h).map((m) => cellName(m.cell)))].sort()).toEqual(squares);
+    const before = Uint16Array.from(g.notes);
+    g.applyHint(h);
+    for (let c = 0; c < 81; c++) if (!squares.includes(cellName(c))) expect(g.notes[c], cellName(c)).toBe(before[c]);
+    expect(g.notes[cell("r1c1")]).toBe(maskOf([7, 9]));
+    expect(g.notes[cell("r1c3")]).toBe(maskOf([4, 8]));
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([4, 8]));
+    for (const n of ["r2c1", "r2c2", "r2c3"]) expect(g.notes[cell(n)]! & maskOf([9])).toBe(0);
+    for (const n of ["r2c4", "r2c5", "r2c6"]) expect(g.notes[cell(n)]! & maskOf([9])).toBe(maskOf([9]));
+    expect(g.hint().kind).toBe("step"); // the next hint doesn't pick at those notes
+  });
+
+  it("killer: placing a digit also clears notes its cage's sum no longer allows", () => {
+    const p: Puzzle = {
+      id: "k",
+      kind: "killer",
+      cages: [cage(0, 3, ["r1c1", "r1c2"]), cage(1, 15, ["r2c1", "r2c2", "r2c3"])],
+      solution: "123456789456789123789123456234567891567891234891234567345678912678912345912345678",
+    };
+    const g = new SudokuGame(p);
+    for (let d = 1; d <= 9; d++) g.toggleNoteMany([cell("r2c2"), cell("r2c3"), cell("r1c2")], d as Digit);
+    g.place(cell("r2c1"), 4); // 11 left in two cells: 2+9, 3+8 or 5+6
+    expect(g.notes[cell("r2c2")]).toBe(maskOf([2, 3, 5, 6, 8, 9]));
+    expect(g.notes[cell("r2c3")]).toBe(maskOf([2, 3, 5, 6, 8, 9]));
+    g.undo();
+    expect(g.notes[cell("r2c2")]).toBe(maskOf([1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    g.place(cell("r1c1"), 3); // wrong, and no digit can finish the cage: only the 3 comes out
+    expect(g.notes[cell("r1c2")]).toBe(maskOf([1, 2, 4, 5, 6, 7, 8, 9]));
+    g.undo();
+    g.settings.autoClearNotes = false;
+    g.place(cell("r2c1"), 4);
+    expect(g.notes[cell("r2c2")]).toBe(maskOf([1, 2, 3, 4, 5, 6, 7, 8, 9]));
+  });
+
+  it("solving on hints alone never leaves a note the notes check would flag, and every pencil keeps the answer", () => {
+    for (const [file, i] of [["killer-easy", 0], ["killer-medium", 0], ["killer-hard", 3], ["killer-expert", 1], ["classic-expert", 0]] as const) {
+      const g = new SudokuGame(packPuzzle(file, i));
+      for (let k = 0; k < 400 && !g.solved; k++) {
+        const h = g.hint();
+        expect(h.kind, `${file} #${i}`).toBe("step");
+        const before = Uint16Array.from(g.notes);
+        g.applyHint(h);
+        if (!h.step!.placements.length) {
+          const squares = new Set(hintMarks(h).map((m) => m.cell));
+          for (let c = 0; c < 81; c++) if (!squares.has(c)) expect(g.notes[c]).toBe(before[c]);
+        }
+        for (let c = 0; c < 81; c++) if (g.notes[c]) expect(g.notes[c]! & (1 << g.solution[c]!), `${file} ${cellName(c)}`).not.toBe(0);
+      }
+      expect(g.solved, `${file} #${i}`).toBe(true);
+    }
   });
 
   it("a solved puzzle stays solved: undo and redo do nothing", () => {

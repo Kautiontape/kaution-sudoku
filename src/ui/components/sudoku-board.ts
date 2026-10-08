@@ -5,7 +5,7 @@
  */
 import { digitsOf } from "../../engine/combos";
 import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseIndex, parseCellName, rowOf } from "../../engine/geometry";
-import type { SudokuHint } from "../../engine/hints/index";
+import { hintMarks, type SudokuHint } from "../../engine/hints/index";
 import type { CandidateMark, CellId, Puzzle } from "../../engine/types";
 import { cageAnchor } from "../../engine/hints/format";
 import { ladderColors } from "../cell-refs";
@@ -359,8 +359,8 @@ export class SudokuBoard {
       for (const c of step.sources ?? []) this.cellEls[c]!.classList.add("h-source");
       for (const e of [...prior.flatMap((p) => p.eliminations), ...step.eliminations]) this.cellEls[e.cell]!.classList.add("h-target");
       for (const p of step.placements) this.cellEls[p.cell]!.classList.add("h-place");
-      // What the narrowing steps rule out shows as struck candidates, beside the step's own marks.
-      this.drawMarks([...prior.flatMap((p) => p.eliminations.map((e) => ({ cell: e.cell, digit: e.digit, role: "elim" as const }))), ...(step.marks ?? [])]);
+      // Every step's marks, the narrowing steps' too, in only the squares they mark.
+      this.drawMarks(hintMarks(hint), (step.marks ?? []).filter((m) => m.role === "digit"));
       this.drawSightLines();
       for (const l of step.links ?? []) this.drawLink(l.from, l.to, l.strong);
       for (const vc of [...prior.flatMap((p) => p.virtualCages ?? []), ...(step.virtualCages ?? [])])
@@ -405,8 +405,11 @@ export class SudokuBoard {
     if (rect?.classList.contains("on")) this.restart(rect, "flash", "ref-flash");
   }
 
-  /** Ghost candidates with SudokuWiki-style roles. */
-  private drawMarks(marks: CandidateMark[]): void {
+  /**
+   * Ghost candidates with SudokuWiki-style roles, pencilled into the marked squares only. `context`
+   * marks ("every other 9") outline a digit already pencilled there, never adding one.
+   */
+  private drawMarks(marks: readonly CandidateMark[], context: readonly CandidateMark[]): void {
     const byCell = new Map<CellId, CandidateMark[]>();
     for (const m of marks) byCell.set(m.cell, [...(byCell.get(m.cell) ?? []), m]);
     const v = this.last;
@@ -423,6 +426,14 @@ export class SudokuBoard {
         if (!n.classList.contains("on")) n.classList.add("ghost");
         n.classList.add(`m-${m.role}`);
       }
+    }
+    // Any m- class shows a note (style.css), so only ones already showing get the outline — and
+    // one an earlier step marks keeps its role.
+    const marked = new Set(marks.map((m) => m.cell * 10 + m.digit));
+    for (const m of context) {
+      const n = this.noteEls[m.cell]![m.digit - 1]!;
+      if (v?.grid[m.cell] || marked.has(m.cell * 10 + m.digit)) continue;
+      if (n.classList.contains("on") || n.classList.contains("ghost")) n.classList.add("m-digit");
     }
   }
 

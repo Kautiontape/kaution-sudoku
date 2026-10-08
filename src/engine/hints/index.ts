@@ -16,9 +16,10 @@
  * Every step hint places a digit. The solver looks ahead a few placements and picks the one that
  * needs the fewest narrowing steps first (most need none: a single, or a 45-rule sum); when some
  * are needed, the hint walks through just those, then shows how you know the digit, with a nudge
- * that notes would have shown it.
+ * that notes would have shown it. When the digit is further off, a hint teaches a round of
+ * narrowing steps toward it, and applying it pencils in what they leave (`hintMarks` says where).
  */
-import { basicCandidates } from "../candidates";
+import { basicCandidates, comboCandidates } from "../candidates";
 import { techniqueName } from "../catalog";
 import { digitsOf, popcount } from "../combos";
 import { CELL_HOUSES, cellName, houseAt, houseIndex, houseName, HOUSE_CELLS, PEERS } from "../geometry";
@@ -28,7 +29,7 @@ import { TECHNIQUES } from "../techniques";
 import type { Technique } from "../techniques/types";
 import { cageView } from "../techniques/killer";
 import { applyStep, cloneState, createState, isBroken, type SolverState } from "../state";
-import type { CellId, Digit, Grid, House, Puzzle, Step } from "../types";
+import { puzzleKind, type CandidateMark, type CellId, type Digit, type Grid, type House, type Puzzle, type Step } from "../types";
 import { aDigit, asClause, cageName, cap, cellList, comboList, maskList, numberWord, relation } from "./format";
 import { templateFor } from "./registry";
 
@@ -74,6 +75,39 @@ function boardState(input: HintInput): ReturnType<typeof createState> {
       if (narrowed) s.cand[c] = narrowed;
     }
   return s;
+}
+
+/**
+ * The candidates a hint pencils onto the board: what Auto notes would give (cage sums applied, in
+ * killer), minus what earlier hints have ruled out. Never a digit the notes check would flag.
+ */
+export function shownCandidates(puzzle: Puzzle, grid: Grid, known?: ArrayLike<number>): Uint16Array {
+  const cand = puzzleKind(puzzle) === "killer" ? comboCandidates(puzzle, grid) : basicCandidates(puzzle, grid);
+  if (known)
+    for (let c = 0; c < 81; c++) {
+      const left = cand[c]! & ~(known[c] ?? 0);
+      if (left) cand[c] = left;
+    }
+  return cand;
+}
+
+/**
+ * The candidates a step hint marks, one role each: every step it walks through, in order, with its
+ * eliminations struck (a later step's role wins, but a struck candidate stays struck). Their squares
+ * are the only ones the hint pencils. "digit" marks are left out: they point out where else a digit
+ * can go, which is no reason to pencil a square.
+ */
+export function hintMarks(hint: Pick<SudokuHint, "step" | "prior">): CandidateMark[] {
+  const out = new Map<number, CandidateMark>();
+  for (const s of hint.step ? [...(hint.prior ?? []), hint.step] : []) {
+    const struck = s.eliminations.map((e): CandidateMark => ({ cell: e.cell, digit: e.digit, role: "elim" }));
+    for (const m of [...(s.marks ?? []), ...struck]) {
+      if (m.role === "digit") continue;
+      const k = pair(m.cell, m.digit);
+      if (out.get(k)?.role !== "elim") out.set(k, { cell: m.cell, digit: m.digit, role: m.role });
+    }
+  }
+  return [...out.values()];
 }
 
 const boxName = (c: CellId): string => houseName(houseAt(CELL_HOUSES[c]![2]));
@@ -343,8 +377,8 @@ function narrowingParagraphs(start: SolverState, steps: readonly Step[], puzzle:
 
 /**
  * When the nearest digit is a long way off: teach the first few steps toward it (a round of up to
- * MAX_CHAIN). The game remembers what they rule out (HintInput.known), so the next hint picks up
- * from there — no notes needed.
+ * MAX_CHAIN). Applying it pencils in what they leave, and the game remembers what they rule out
+ * (HintInput.known), so the next hint picks up from there.
  */
 function steppingStone(start: SolverState, route: readonly Step[], goal: Step, puzzle: Puzzle): SudokuHint {
   const round = route.slice(0, MAX_CHAIN);
@@ -352,7 +386,7 @@ function steppingStone(start: SolverState, route: readonly Step[], goal: Step, p
   const target = cellName(goal.placements[0]!.cell);
   const why = round.length === 1 ? [...first.why, `So ${walk(start, round)[0]}.`] : narrowingParagraphs(start, round, puzzle);
   why.push(
-    `Nothing can be placed straight from the board yet: ${round.length === 1 ? "this is" : "these are"} the way in toward ${target}. The next hint picks up from here — pencil it in if that helps you keep track.`,
+    `Nothing can be placed straight from the board yet: ${round.length === 1 ? "this is" : "these are"} the way in toward ${target}. Pencil ${round.length === 1 ? "it" : "them"} in, and the next hint picks up from there.`,
   );
   return {
     kind: "step",
@@ -363,7 +397,7 @@ function steppingStone(start: SolverState, route: readonly Step[], goal: Step, p
       where: first.where,
       what: `${first.what} ${round.length === 1 ? "It's a step" : `${cap(numberWord(round.length))} steps`} on the way to ${target}.`,
       why,
-      do: `Keep in mind: ${narrowed(round.flatMap((x) => x.eliminations), start.cand)}.`,
+      do: `Pencil it in: ${narrowed(round.flatMap((x) => x.eliminations), start.cand)}.`,
       ...(round.length > 1 ? { steps: round.length } : {}),
     },
     step: round[round.length - 1]!,

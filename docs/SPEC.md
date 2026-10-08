@@ -39,7 +39,8 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
   and Erase wipes them all (digits and notes), each as one undo step. A cell acts on release, not
   on press: pressing the selected cell to start a drag never pencils anything, while a plain tap
   on it repeats the last digit.
-- Placing a digit auto-removes it from notes in the same row/col/box/**cage** (setting).
+- Placing a digit auto-removes it from notes in the same row/col/box/**cage**, and (killer) takes
+  out of the cage's other notes any digit its remaining sum no longer allows (setting).
 - Highlights: selected cell, its peers, its cage, every cell with the same digit, matching notes.
 - Digit pad shows how many of each digit remain; finished digits dim.
 - Killer: a cage bar lists the selected cage's combinations, striking out ones that clash with
@@ -99,9 +100,12 @@ player's notes.
 
 When the nearest digit is further than that (the hard openings of tough killers), the hint
 teaches the route in rounds of up to three steps, aimed at a named square ("Two steps on the way
-to r3c1."), with "Do" = "Keep in mind: …". The game remembers what hints have ruled out (saved
-with the game, never shown as notes), so the next hint picks up from there — and every later
-hint is shorter for it. Rounds are ~4% of killer-easy hints, ~20% of expert.
+to r3c1."), with "Do" = "Pencil it in: …". Applying a round pencils in what it leaves, in the
+squares it marks and nowhere else: notes there keep the digits still possible, and a square
+without notes gets its candidates (as Auto notes would have them, less what hints have ruled
+out). The game also remembers what hints have ruled out (saved with the game), so the next hint
+picks up from there — and every later hint is shorter for it. Rounds are ~4% of killer-easy
+hints, ~20% of expert.
 
 Before any step, the hint checks, in order:
 1. **Wrong digits / queens** → "Something's off in the top-left box." … "Clear r3c4."
@@ -116,8 +120,8 @@ Before any step, the hint checks, in order:
 |---|---|---|
 | 1 Where | which area to look at, no technique named | area tinted, rest dimmed |
 | 2 What | technique name + one-line nudge, tier badge | pattern cells outlined, cages lit |
-| 3 Why | full reasoning with cells, digits and arithmetic (narrowing steps first, if any) | candidates coloured by role (narrowing steps' eliminations struck through), sight lines from justifying digits, chain arrows, dashed virtual cages, the cages involved lit |
-| 4 Do | places the digit | normal feedback |
+| 3 Why | full reasoning with cells, digits and arithmetic (narrowing steps first, if any) | pencils in only the squares the steps mark (never "every other 9"): candidates coloured by role, every step's eliminations struck through; sight lines from justifying digits, chain arrows, dashed virtual cages, the cages involved lit |
+| 4 Do | places the digit (a round: pencils in what it leaves) | normal feedback |
 
 Hint text is generated from structured `Step.explain` data via per-technique templates (no LLM,
 no prose in techniques). "Learn" on the sheet opens that technique's guide.

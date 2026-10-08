@@ -683,7 +683,8 @@ class SudokuPlay implements Screen {
     this.closeHint();
     this.game.applyHint(hint);
     if (hint.step && !hint.step.placements.length) {
-      // A step on the way to a digit: nothing lands on the board, so show what it ruled out.
+      // A round on the way to a digit: no digit lands, so spark where it struck candidates and say
+      // what it pencilled in.
       for (const e of [...(hint.prior ?? []), hint.step].flatMap((s) => s.eliminations)) {
         const p = this.board.center(e.cell);
         this.app.fx.burst(p.x, p.y, MARK_COLORS.elim!, { count: 5, speed: 90, size: 5, life: 0.5 });

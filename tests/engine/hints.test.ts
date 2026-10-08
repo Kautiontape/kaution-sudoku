@@ -2,15 +2,16 @@ import { readFileSync } from "node:fs";
 import { basicCandidates, comboCandidates, gridFromPuzzle } from "../../src/engine/candidates";
 import { techniqueInfo, SUDOKU_CATALOG } from "../../src/engine/catalog";
 import { bit, maskOf } from "../../src/engine/combos";
-import { sudokuHint } from "../../src/engine/hints/index";
+import { cellName } from "../../src/engine/geometry";
+import { hintMarks, shownCandidates, sudokuHint } from "../../src/engine/hints/index";
 import { TEMPLATES } from "../../src/engine/hints/registry";
 import { decodeSudoku, encodeSudoku, type SudokuPackEntry } from "../../src/engine/pack";
 import { generateClassic, generateKiller } from "../../src/engine/puzzles";
 import { createState } from "../../src/engine/state";
 import { TECHNIQUES } from "../../src/engine/techniques";
-import type { Puzzle } from "../../src/engine/types";
+import type { CandidateMark, Puzzle, Step } from "../../src/engine/types";
 import { parseSolution } from "../../src/engine/validate";
-import { cell, classic } from "./helpers";
+import { cage, cell, classic, withDigits } from "./helpers";
 
 const WIKI = classic(
   "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
@@ -90,6 +91,38 @@ describe("sudokuHint ordering", () => {
   });
 });
 
+describe("what a hint pencils", () => {
+  const step = (marks: Step["marks"], eliminations: Step["eliminations"] = []): Step =>
+    ({ technique: "pointing", tier: 2, rating: 2, placements: [], eliminations, focus: { cells: [], cages: [], houses: [] }, explain: {}, marks }) as unknown as Step;
+  const at = (marks: CandidateMark[]) => marks.map((m) => `${cellName(m.cell)}:${m.digit}:${m.role}`).sort();
+
+  it("marks every step's squares, struck candidates stay struck, and 'every other 9' pencils nothing", () => {
+    const first = step([{ cell: cell("r1c1"), digit: 9, role: "key" }], [{ cell: cell("r1c3"), digit: 9 }]);
+    const last = step([
+      { cell: cell("r1c1"), digit: 9, role: "alt" }, // a later role wins…
+      { cell: cell("r1c3"), digit: 9, role: "key" }, // …but not over a strike
+      { cell: cell("r2c4"), digit: 9, role: "key" },
+      { cell: cell("r2c1"), digit: 9, role: "elim" },
+      { cell: cell("r5c5"), digit: 9, role: "digit" },
+    ]);
+    expect(at(hintMarks({ prior: [first], step: last }))).toEqual(["r1c1:9:alt", "r1c3:9:elim", "r2c1:9:elim", "r2c4:9:key"]);
+    expect(hintMarks({})).toEqual([]);
+  });
+
+  it("pencils Auto notes' candidates — cage sums applied in killer — minus what hints ruled out", () => {
+    const p = withDigits({}, [cage(0, 16, ["r1c1", "r1c2"])]);
+    const grid = gridFromPuzzle(p);
+    expect(shownCandidates(p, grid)[cell("r1c1")]).toBe(maskOf([7, 9]));
+    const known = new Uint16Array(81);
+    known[cell("r1c1")] = maskOf([7]);
+    known[cell("r1c2")] = maskOf([7, 9]); // would leave nothing: ignored
+    const shown = shownCandidates(p, grid, known);
+    expect(shown[cell("r1c1")]).toBe(maskOf([9]));
+    expect(shown[cell("r1c2")]).toBe(maskOf([7, 9]));
+    expect(shownCandidates(WIKI, gridFromPuzzle(WIKI))).toEqual(basicCandidates(WIKI, gridFromPuzzle(WIKI)));
+  });
+});
+
 interface Played {
   /** Narrowing steps before each placing hint. */
   prior: number[];
@@ -155,7 +188,7 @@ describe("hints point at the next digit", () => {
       expect(h.kind).toBe("step");
       if (!h.step!.placements.length) {
         expect(h.ladder.what).toMatch(/on the way to r\dc\d\.$/);
-        expect(h.ladder.do).toMatch(/^Keep in mind: /);
+        expect(h.ladder.do).toMatch(/^Pencil it in: /);
         // The next hint builds on it instead of repeating it.
         for (const s of [...(h.prior ?? []), h.step!]) for (const e of s.eliminations) known[e.cell]! |= bit(e.digit);
         const next = sudokuHint({ puzzle: p, grid, notes: new Uint16Array(81), solution, known });

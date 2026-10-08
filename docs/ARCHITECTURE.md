@@ -89,9 +89,12 @@ tests/
   placement with the fewest. A direct probe first asks every placing technique (singles, cage
   last cell, 45-rule sums) about the board itself. Up to three steps become `hint.prior`, walked
   through in the "why" rung; longer routes are taught in rounds of three (a hint with no
-  placement). Everything a hint rules out goes into `SudokuGame.known` (saved, never shown as
-  notes) and back in as `HintInput.known`, so rounds build on each other. Notes are only checked
-  for digits that are impossible (`impossibleNotes`).
+  placement). Everything a hint rules out goes into `SudokuGame.known` (saved) and back in as
+  `HintInput.known`, so rounds build on each other. `hintMarks` is the one list of squares a step
+  hint pencils — the board draws ghosts there, and applying a round writes `shownCandidates`
+  (Auto notes' candidates, less `known`) into the same squares. Notes are only checked for digits
+  that are impossible (`impossibleNotes`); auto-clear on placement removes exactly those (cage
+  sums included), so notes a round wrote never trip the check.
 
 ### Generation
 - Classic: random solved grid → dig 180°-symmetric pairs while the exact solver says unique →

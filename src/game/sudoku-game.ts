@@ -6,8 +6,7 @@
 import { basicCandidates, comboCandidates, gridFromPuzzle } from "../engine/candidates";
 import { bit, cageCombos } from "../engine/combos";
 import { CELL_HOUSES, HOUSE_CELLS, houseAt, PEERS } from "../engine/geometry";
-import { sudokuHint, type SudokuHint } from "../engine/hints/index";
-import { createState } from "../engine/state";
+import { hintMarks, shownCandidates, sudokuHint, type SudokuHint } from "../engine/hints/index";
 import { puzzleKind, type Cage, type CellId, type Digit, type House, type Puzzle, type PuzzleKind } from "../engine/types";
 import { parseSolution } from "../engine/validate";
 
@@ -65,7 +64,7 @@ export class SudokuGame {
   readonly given: Uint8Array;
   grid: Uint8Array;
   notes: Uint16Array;
-  /** Candidates hints have ruled out — the next hint builds on them (never shown as notes). */
+  /** Candidates hints have ruled out — the next hint builds on them, whatever the notes say. */
   known: Uint16Array;
   elapsedMs = 0;
   mistakes = 0;
@@ -161,7 +160,11 @@ export class SudokuGame {
     this.redoStack = [];
   }
 
-  /** Changes for placing a digit: the cell itself plus peers' notes when auto-clear is on. */
+  /**
+   * Changes for placing a digit: the cell itself plus, when auto-clear is on, the notes it makes
+   * impossible — its digit in the row, column, box and cage, and (killer) any digit the cage's
+   * remaining sum no longer allows. So no note the hint's notes check would flag is left behind.
+   */
   private placeChanges(cell: CellId, digit: Digit, pending: Map<CellId, Change>): void {
     const get = (c: CellId): Change => {
       let ch = pending.get(c);
@@ -174,11 +177,28 @@ export class SudokuGame {
     if (!this.settings.autoClearNotes) return;
     const off = ~bit(digit);
     const peers = new Set(PEERS[cell]);
-    for (const c of this.cageOf(cell)?.cells ?? []) if (c !== cell) peers.add(c);
+    const cage = this.cageOf(cell);
+    for (const c of cage?.cells ?? []) if (c !== cell) peers.add(c);
     for (const p of peers) {
       const ch = get(p);
       if (ch.notes[1] & bit(digit)) ch.notes[1] &= off;
     }
+    if (!cage) return;
+    let rem = cage.sum;
+    let used = 0;
+    const empty: CellId[] = [];
+    for (const c of cage.cells) {
+      const d = pending.get(c)?.digit[1] ?? this.grid[c]!;
+      if (d) {
+        rem -= d;
+        used |= bit(d);
+      } else empty.push(c);
+    }
+    const allowed = cageCombos(empty.length, rem)
+      .filter((m) => !(m & used))
+      .reduce((a, m) => a | m, 0);
+    // No combination left means the digit itself is wrong: leave the notes for when it's fixed.
+    if (allowed) for (const c of empty) get(c).notes[1] &= allowed;
   }
 
   mistakeReason(cell: CellId, digit: Digit): MistakeReason {
@@ -335,14 +355,9 @@ export class SudokuGame {
     return sudokuHint({ puzzle: this.puzzle, grid: this.grid, notes: this.notes, solution: this.solution, known: this.known });
   }
 
-  /** The candidates hints reason from: the board, minus what hints have already ruled out. */
+  /** The candidates a hint pencils: Auto notes' (cage sums in killer), minus what hints have ruled out. */
   hintCandidates(): Uint16Array {
-    const cand = createState(this.puzzle, this.grid).cand;
-    for (let c = 0; c < 81; c++) {
-      const left = cand[c]! & ~this.known[c]!;
-      if (left) cand[c] = left;
-    }
-    return cand;
+    return shownCandidates(this.puzzle, this.grid, this.known);
   }
 
   recordRung(rung: number): void {
@@ -361,10 +376,19 @@ export class SudokuGame {
     };
     const placed: { cell: CellId; digit: Digit }[] = [];
     if (h.kind === "step" && h.step) {
-      // What a hint rules out is remembered for the next hint — not written into the notes,
-      // which stay the player's own.
+      // What a hint rules out is remembered for the next hint, whatever the notes say.
       for (const s of [...(h.prior ?? []), h.step]) for (const e of s.eliminations) this.known[e.cell]! |= bit(e.digit);
       for (const p of h.step.placements) placed.push(p);
+      // A round on the way to a digit pencils in what it leaves, in the squares it marks: notes keep
+      // the digits still possible (a square with none gets the hint's candidates).
+      if (!h.step.placements.length) {
+        const cand = this.hintCandidates();
+        for (const c of new Set(hintMarks(h).map((m) => m.cell))) {
+          if (this.grid[c]) continue;
+          const ch = get(c);
+          ch.notes[1] = (ch.notes[0] & cand[c]!) || cand[c]!;
+        }
+      }
     } else if (h.fix) {
       for (const c of h.fix.clear ?? []) {
         const ch = get(c);
