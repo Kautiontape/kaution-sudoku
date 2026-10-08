@@ -770,8 +770,53 @@ button:disabled {
 }
 
 .play.hint-open {
-  /* 52dvh is what the sheet leaves at its tallest (48dvh); minus the top bar, progress and stats. */
-  --board: min(calc(100vw - 20px), calc(52dvh - 94px - env(safe-area-inset-top)), 560px);
+  /* 52dvh is what the sheet leaves at its tallest (48dvh); minus the top bar, progress, stats and
+     the row of column numbers. Narrower, too, so the row numbers fit beside it. */
+  --board: min(calc(100vw - 52px), calc(52dvh - 110px - env(safe-area-inset-top)), 560px);
+}
+
+.play.hint-open .board-wrap,
+.play.hint-open .qboard-wrap {
+  margin-top: 16px;
+}
+
+/* Row and column numbers: faint, only while hinting; a named square's row and column light up. */
+.coords {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.board.hinting ~ .coords,
+.qboard.hinting ~ .coords {
+  opacity: 1;
+}
+
+.coord {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgba(200, 212, 255, 0.4);
+  transition: color 0.25s, text-shadow 0.25s;
+}
+
+.coord.col {
+  top: -10px;
+}
+
+.coord.row {
+  left: -13px;
+}
+
+.coord.lit {
+  color: var(--ref);
+  font-weight: 800;
+  text-shadow: 0 0 8px var(--ref);
 }
 
 /* The hint-mode board is sized to fit between the stats and the sheet: pin it to the top so no

@@ -13,6 +13,7 @@ import { flipOffset, h, s } from "../dom";
 import type { Stage } from "../fx/levels";
 import { DIGIT_COLORS } from "../palette";
 import { cagePath, colorCages } from "./cage-paths";
+import { Coords } from "./coords";
 
 export interface BoardView {
   grid: Uint8Array;
@@ -47,6 +48,7 @@ export class SudokuBoard {
   private refRects = new Map<CellId, SVGRectElement>();
   private refSvg: SVGSVGElement;
   private sums: HTMLElement;
+  private coords = new Coords(9);
   private cagePaths = new Map<number, SVGPathElement>();
   private cageOfCell = new Int16Array(81).fill(-1);
   private hint: SudokuHint | null = null;
@@ -135,7 +137,7 @@ export class SudokuBoard {
         this.cellEls[a]!.classList.add("has-sum");
       });
     }
-    this.el = h("div", { class: "board-wrap" }, this.board, this.svg, refSvg, sums);
+    this.el = h("div", { class: "board-wrap" }, this.board, this.svg, refSvg, sums, this.coords.el);
     this.attachInput(onSelect, onDragSelect, onTap);
   }
 
@@ -388,6 +390,7 @@ export class SudokuBoard {
       rect.classList.add("on");
       this.cellEls[c]!.classList.add("h-ref");
     }
+    this.coords.light([...lit].map(([c, color]) => ({ row: rowOf(c), col: colOf(c), color })));
   }
 
   /** Pulse a named square's ring (its name was tapped in the hint text). */

@@ -11,6 +11,7 @@ import { flipOffset, h, svgIcon } from "../dom";
 import type { Stage } from "../fx/levels";
 import { ICONS } from "../icons";
 import { REGION_COLORS } from "../palette";
+import { Coords } from "./coords";
 
 export interface QueensBoardHandlers {
   onTap(c: QCell): void;
@@ -40,6 +41,7 @@ export class QueensBoard {
   private cells: HTMLElement[] = [];
   private hint: QueensHint | null = null;
   private rung = 0;
+  private coords: Coords;
   readonly n: number;
 
   constructor(
@@ -69,7 +71,8 @@ export class QueensBoard {
       this.board.append(cell);
     }
     this.attachInput();
-    this.el = h("div", { class: "qboard-wrap" }, this.board);
+    this.coords = new Coords(n);
+    this.el = h("div", { class: "qboard-wrap" }, this.board, this.coords.el);
   }
 
   private cellAtPoint(x: number, y: number): QCell | null {
@@ -244,12 +247,18 @@ export class QueensBoard {
     for (const el of this.cells) el.classList.remove("h-area", "h-dim", "h-focus", "h-elim", "h-place", "h-chain", "h-wrong", "h-ref");
     this.board.classList.toggle("hinting", !!this.hint && this.rung > 0);
     const hint = this.hint;
+    this.coords.light([]);
     if (!hint || this.rung <= 0) return;
+    const lit: { row: number; col: number; color: string }[] = [];
     for (const [name, color] of this.refColors(ladderTexts(hint.ladder, this.rung))) {
-      const el = this.cells[parseCellName(name, this.n) ?? -1];
-      el?.classList.add("h-ref");
-      el?.style.setProperty("--ref", color);
+      const c = parseCellName(name, this.n);
+      const el = this.cells[c ?? -1];
+      if (c === null || !el) continue;
+      el.classList.add("h-ref");
+      el.style.setProperty("--ref", color);
+      lit.push({ row: rowOf(c, this.n), col: colOf(c, this.n), color });
     }
+    this.coords.light(lit);
     const n = this.n;
     const area = new Set<QCell>();
     const step = hint.step;

@@ -168,6 +168,12 @@ test("hint text colours each square it names and rings that square in the same c
     return b.y + b.height - s.y;
   };
   await expect.poll(overlap).toBeLessThanOrEqual(0);
+  // Row and column numbers show while hinting; each named square's row and column light up.
+  await expect(page.locator(".board-wrap .coord")).toHaveCount(18);
+  await expect(page.locator(".board-wrap .coords")).toHaveCSS("opacity", "1");
+  const [nr, nc] = [Number([...squares.keys()][0]![1]), Number([...squares.keys()][0]![3])];
+  await expect(page.locator(".coord.row.lit", { hasText: String(nr) })).toHaveCount(1);
+  await expect(page.locator(".coord.col.lit", { hasText: String(nc) })).toHaveCount(1);
   await page.screenshot({ path: "test-results/screens/hint-refs.png" });
   // Tapping a name pulses its square.
   await chips.first().click();
