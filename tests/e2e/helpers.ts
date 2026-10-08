@@ -13,17 +13,20 @@ export async function applyNextHint(page: Page): Promise<string> {
   return why;
 }
 
-/** Keep applying hints until the win card shows (or the cap is hit). Returns hints used. */
+/** Keep applying hints until the board is solved and the results banner shows. Returns hints used. */
 export async function solveWithHints(page: Page, cap = 400): Promise<number> {
-  const win = page.getByTestId("win");
-  for (let i = 0; i < cap; i++) {
-    if (await win.isVisible()) return i;
-    // The finale plays before the card appears; once the board is solved, just wait for it.
+  let used = 0;
+  for (; used < cap; used++) {
     if (await page.locator('.play[data-solved="true"]').count()) break;
     await applyNextHint(page);
   }
-  await expect(win).toBeVisible({ timeout: 8000 });
-  return cap;
+  await expect(page.getByTestId("result")).toBeVisible({ timeout: 8000 });
+  return used;
+}
+
+/** Wait for the level's entrance to finish (cells are live during it, but positions move). */
+export async function landed(page: Page): Promise<void> {
+  await expect(page.locator(".play[data-entering]")).toHaveCount(0, { timeout: 5000 });
 }
 
 export interface CellInfo {
@@ -36,8 +39,9 @@ export interface CellInfo {
 }
 
 export async function readBoard(page: Page): Promise<CellInfo[]> {
-  // Puzzles load asynchronously: wait for the full board before reading it.
+  // Puzzles load asynchronously: wait for the full board, and for it to land, before reading it.
   await expect(page.locator(".board .cell")).toHaveCount(81);
+  await landed(page);
   return page.$$eval(".board .cell", (els) =>
     els.map((el) => {
       const d = (el as HTMLElement).dataset;

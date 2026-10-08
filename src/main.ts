@@ -4,6 +4,7 @@ import "./ui/style.css";
 import { DIFFICULTIES, type Difficulty } from "./engine/types";
 import type { Mode } from "./game/packs";
 import { App } from "./ui/app";
+import { mountResults } from "./ui/components/result-banner";
 import { mountToasts, toast } from "./ui/components/toast";
 import { Background } from "./ui/fx/background";
 import { mountCallouts } from "./ui/fx/callout";
@@ -24,6 +25,7 @@ document.body.prepend(bgCanvas);
 document.body.append(fxCanvas);
 mountCallouts(document.body);
 mountToasts(document.body);
+mountResults(document.body);
 
 const app = new App(document.getElementById("app")!, new Fx(fxCanvas), new Background(bgCanvas));
 app.register({

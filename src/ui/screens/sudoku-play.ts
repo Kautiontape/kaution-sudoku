@@ -19,19 +19,22 @@ import { refNodes } from "../cell-refs";
 import { HintSheet } from "../components/hint-sheet";
 import { Numpad } from "../components/numpad";
 import { SudokuBoard } from "../components/sudoku-board";
+import { showResult } from "../components/result-banner";
 import { clearToast, toast } from "../components/toast";
 import { flip, formatTime, h, svgIcon } from "../dom";
 import { callout } from "../fx/callout";
+import { levelOf } from "../fx/level-order";
+import { enterLevel, leaveLevel } from "../fx/levels";
 import { buzz } from "../haptics";
 import { ICONS } from "../icons";
 import { DIFFICULTY_LABEL, MODE_LABEL, mistakeText } from "../messages";
 import { DIGIT_COLORS, MARK_COLORS } from "../palette";
 import { onSettings, settings } from "../settings";
 import { sound } from "../sound";
-import { firstTime, loadProgress, recordHint, recordSolve } from "../store";
+import { finishPuzzle, firstTime, loadProgress, recordHint } from "../store";
 import { openLearn } from "./learn";
+import { openScores } from "./scores";
 import { openSettings } from "./settings-sheet";
-import { showWin } from "./win";
 
 type SudokuMode = "classic" | "killer";
 
@@ -73,6 +76,8 @@ class SudokuPlay implements Screen {
   private tools: Record<string, HTMLButtonElement> = {};
   private tick = 0;
   private saveTimer = 0;
+  /** After a solve: the countdown to the next level. */
+  private advanceTimer = 0;
   private offs: (() => void)[] = [];
   private lastPlaced: CellId = 40;
   /** Set when this game is being thrown away (restart): skip the final save. */
@@ -107,7 +112,7 @@ class SudokuPlay implements Screen {
     this.timerEl = h("div", { class: "timer", "data-testid": "timer" });
     this.progressEl = h("i");
     this.statsEl = h("div", { class: "stats" });
-    const title = h("div", { class: "title" }, h("b", null, MODE_LABEL[mode]!), h("span", null, DIFFICULTY_LABEL[difficulty]!));
+    const title = h("div", { class: "title" }, h("b", null, MODE_LABEL[mode]!), h("span", null, `${DIFFICULTY_LABEL[difficulty]!} · Lv ${levelOf(puzzle.id)}`));
     const topbar = h(
       "header",
       { class: "topbar" },
@@ -163,7 +168,7 @@ class SudokuPlay implements Screen {
     this.render();
     this.save();
     sound.startMusic();
-    requestAnimationFrame(() => this.introSweep());
+    requestAnimationFrame(() => this.enter());
     if (firstTime(`tip-${mode}`))
       setTimeout(
         () =>
@@ -184,7 +189,25 @@ class SudokuPlay implements Screen {
   destroy(): void {
     this.save();
     clearInterval(this.tick);
+    clearTimeout(this.advanceTimer);
     for (const off of this.offs) off();
+  }
+
+  /** The level drops in (the style rotates level to level). Marked on the screen until it lands. */
+  private enter(): void {
+    const { style, ms } = enterLevel(this.board.stage(), this.app, levelOf(this.puzzle.id));
+    this.el.dataset.entering = style.id;
+    window.setTimeout(() => delete this.el.dataset.entering, ms);
+  }
+
+  /** On to the next level: the solved board leaves, the next one arrives. Waits out open overlays. */
+  private advance(): void {
+    if (document.querySelector(".overlay")) {
+      this.advanceTimer = window.setTimeout(() => this.advance(), 600);
+      return;
+    }
+    const ms = leaveLevel(this.board.stage(), this.app);
+    this.advanceTimer = window.setTimeout(() => void this.app.play(this.mode, this.difficulty, false, this.puzzle.id), ms);
   }
 
   // ------------------------------------------------------------------------------------------
@@ -527,30 +550,19 @@ class SudokuPlay implements Screen {
     this.app.bg.pulse(c.x, c.y, "#ffffff", 2.5);
     sound.solved();
     buzz("solved");
-    recordSolve(this.mode, this.difficulty, this.puzzle.id, g.elapsedMs);
+    const result = finishPuzzle({
+      mode: this.mode,
+      difficulty: this.difficulty,
+      id: this.puzzle.id,
+      level: levelOf(this.puzzle.id),
+      time: g.elapsedMs,
+      mistakes: g.mistakes,
+      hints: g.hintsUsed,
+    });
     clearSaved(this.mode);
-    setTimeout(
-      () =>
-        showWin(this.el, {
-          mode: this.mode,
-          difficulty: this.difficulty,
-          perfect,
-          time: g.elapsedMs,
-          mistakes: g.mistakes,
-          hints: g.hintsUsed,
-          techniques: this.puzzle.meta?.techniques ?? [],
-          onNext: () => void this.app.play(this.mode, this.difficulty, false, this.puzzle.id),
-          onHome: () => void this.app.home(),
-        }),
-      2300,
-    );
-  }
-
-  /** Opening flourish: the givens shimmer in. */
-  private introSweep(): void {
-    if (settings().effects === "low") return;
-    const order = Array.from({ length: 81 }, (_, i) => i).filter((c) => this.game.grid[c]).sort((a, b) => rowOf(a) + colOf(a) - (rowOf(b) + colOf(b)));
-    this.board.sweep(order, 12);
+    // The results ride along at the top while the next level drops in: play never stops.
+    window.setTimeout(() => showResult(result), 600);
+    this.advanceTimer = window.setTimeout(() => this.advance(), ADVANCE_MS);
   }
 
   // ------------------------------------------------------------------------------------------
@@ -646,6 +658,7 @@ class SudokuPlay implements Screen {
         }),
         item("Fill notes", ICONS.wand, () => this.autoNotes()),
         item("Clear notes", ICONS.trash, () => this.game.clearNotes()),
+        item("Scores", ICONS.trophy, () => openScores()),
         item("Learn techniques", ICONS.book, () => openLearn()),
         item("Settings", ICONS.gear, () => openSettings()),
       ),
@@ -653,6 +666,9 @@ class SudokuPlay implements Screen {
     document.body.append(menu);
   }
 }
+
+/** From the solve to the next level: the fireworks play and the finale's chord resolves first. */
+const ADVANCE_MS = 2400;
 
 /** Most open cells the lens will treat as a readable sum. */
 const LENS_MAX = 4;

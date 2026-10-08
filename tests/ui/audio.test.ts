@@ -31,6 +31,8 @@ function exercise(e: SoundEngine): void {
   e.complete(["row", "col", "box", "cage", "region", "digit", "???"]);
   e.complete([]);
   e.solved();
+  for (let s = -1; s <= 9; s++) e.level(s);
+  e.level(Number.NaN);
   e.mistake();
   for (let r = -1; r <= 5; r++) e.hint(r);
   e.queen(0, 8);

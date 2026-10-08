@@ -8,6 +8,7 @@ import type { QueensHint } from "../../engine/queens/hints";
 import { CROSS, QUEEN, type QCell, type QueensPuzzle } from "../../engine/queens/types";
 import { ladderTexts, splitRefs } from "../cell-refs";
 import { flipOffset, h, svgIcon } from "../dom";
+import type { Stage } from "../fx/levels";
 import { ICONS } from "../icons";
 import { REGION_COLORS } from "../palette";
 
@@ -128,6 +129,11 @@ export class QueensBoard {
       lastTap = null;
     });
     this.board.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  /** The board for level entrances and exits. */
+  stage(): Stage {
+    return { wrap: this.el, grid: this.board, cells: this.cells, n: this.n, overlays: [], tiles: false };
   }
 
   /** Where a square sits once any glide (the hint sheet opening or closing) has landed. */

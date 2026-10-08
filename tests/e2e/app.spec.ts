@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { applyNextHint, cellLocator, digitKey, readBoard, solveWithHints } from "./helpers";
+import { applyNextHint, cellLocator, digitKey, landed, readBoard, solveWithHints } from "./helpers";
+
+const STYLES = ["warp", "rain", "ripple", "deal", "vortex", "shards", "hologram", "nova"];
 
 test("home shows the three modes and starts a game", async ({ page }) => {
   await page.goto("/");
@@ -127,14 +129,50 @@ test("hint text colours each square it names and rings that square in the same c
   await expect(page.locator(".ref-ring.on")).toHaveCount(0);
 });
 
-test("classic easy can be solved entirely by following hints", async ({ page }) => {
+test("classic easy can be solved by hints; the next level follows on its own and Scores keeps the result", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/?play=classic-easy");
+  await expect(page.locator(".play .title")).toContainText("Lv 1");
   await solveWithHints(page);
-  await expect(page.getByTestId("win")).toContainText("Solved");
-  await page.screenshot({ path: "test-results/screens/win.png" });
-  await page.getByTestId("next-puzzle").click();
+  const result = page.getByTestId("result");
+  await expect(result).toContainText(/Solved|Perfect/);
+  await expect(result).toContainText("Level 1");
+  await expect(result).toContainText("first clear");
+  await page.screenshot({ path: "test-results/screens/result-banner.png" });
+  // No card to dismiss: the next level drops in by itself.
+  await expect(page.locator(".play .title")).toContainText("Lv 2", { timeout: 8000 });
   await expect(page.getByRole("gridcell")).toHaveCount(81);
+  await landed(page);
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("button", { name: "Scores" }).click();
+  const scores = page.getByTestId("scores");
+  await expect(scores.getByTestId("score-row")).toHaveCount(1);
+  await expect(scores.getByTestId("score-row")).toContainText("Classic · Easy");
+  await expect(scores.locator(".record:not(.none)")).toHaveCount(1);
+  await page.screenshot({ path: "test-results/screens/scores.png" });
+});
+
+test("every level entrance runs and leaves the board live", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const [i, style] of STYLES.entries()) {
+    const mode = i % 2 ? "queens-easy" : "killer-easy";
+    await page.goto(`/?play=${mode}&entrance=${style}`);
+    const play = page.locator(".play");
+    await expect(play).toHaveAttribute("data-entering", style);
+    await page.waitForTimeout(260);
+    await page.screenshot({ path: `test-results/screens/entrance-${style}.png` });
+    await expect(page.locator(".callout")).toContainText("LEVEL 1");
+    await landed(page);
+  }
+  // Mid-entrance input works: a sudoku digit lands while the board is still arriving.
+  await page.goto("/?play=classic-easy&entrance=vortex");
+  await expect(page.locator(".play")).toHaveAttribute("data-entering", "vortex");
+  const empty = page.locator(".board .cell:not(.given)").first();
+  await empty.click();
+  await page.keyboard.press("5");
+  await expect(empty.locator(".v")).toHaveText("5");
+  expect(errors).toEqual([]);
 });
 
 test("killer: cages render and a cage repeat is explained", async ({ page }) => {
@@ -208,6 +246,7 @@ test("queens: tap toggles ✕, double-tap makes a queen, hold clears; clashes ar
   await page.screenshot({ path: "test-results/screens/queens.png" });
   await solveWithHints(page, 120);
   await expect(page.locator(".qcell.queen")).toHaveCount(n);
+  await expect(page.locator(".play .title")).toContainText("Lv 2", { timeout: 8000 });
 });
 
 test("queens: scratch tries queens and ✕s without counting, then wipes back to your spot or keeps it", async ({ page }) => {
@@ -294,6 +333,11 @@ test("learn and settings overlays open and close", async ({ page }) => {
   await page.reload();
   await page.getByTestId("open-settings").click();
   await expect(page.getByTestId("settings").locator('input[data-key="haptics"]')).not.toBeChecked();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("open-scores").click();
+  await expect(page.getByTestId("scores")).toContainText("Nothing here yet");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("scores")).toHaveCount(0);
 });
 
 test("learn cards show a worked example on a real board", async ({ page }) => {

@@ -14,6 +14,8 @@ export interface SoundApi {
   erase(): void;
   complete(kinds: string[]): void;
   solved(): void;
+  /** A new level arriving in entrance style 0..7. */
+  level(style: number): void;
   mistake(): void;
   hint(rung: number): void;
   queen(col: number, n: number): void;
@@ -34,6 +36,7 @@ let engine: SoundApi = {
   erase: noop,
   complete: noop,
   solved: noop,
+  level: noop,
   mistake: noop,
   hint: noop,
   queen: noop,

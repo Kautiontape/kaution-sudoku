@@ -47,6 +47,9 @@ Squares named in hints, examples and the Σ45 lens are colour-matched to rings o
 Queens input: tap ✕ on/off, double-tap queen, hold to clear, one undo step per drag; a Scratch
 layer for what-if queens that never counts and wipes back to your spot (or is kept).
 
+Levels flow: auto-advance after a solve with a translucent results banner; eight themed level
+entrances with matching exits and arrival sounds; Scores (records + history).
+
 ## Next
 - Calculator tape UI and multi-house lens (M4).
 - Technique mastery tracking by classifying the player's own placements.

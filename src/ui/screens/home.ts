@@ -9,6 +9,7 @@ import { THEMES } from "../palette";
 import { sound } from "../sound";
 import { load, loadProgress } from "../store";
 import { openLearn } from "./learn";
+import { openScores } from "./scores";
 import { openSettings } from "./settings-sheet";
 
 interface ModeInfo {
@@ -113,6 +114,7 @@ export function createHome(app: App): Screen {
       "footer",
       { class: "home-foot" },
       h("button", { class: "btn ghost", type: "button", "data-testid": "open-learn", onclick: () => openLearn() }, svgIcon(ICONS.book), "Learn"),
+      h("button", { class: "btn ghost", type: "button", "data-testid": "open-scores", onclick: () => openScores() }, svgIcon(ICONS.trophy), "Scores"),
       h("button", { class: "btn ghost", type: "button", "data-testid": "open-settings", onclick: () => openSettings() }, svgIcon(ICONS.gear), "Settings"),
     ),
   );

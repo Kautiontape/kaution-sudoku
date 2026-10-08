@@ -134,7 +134,21 @@ While the sheet is open the board is pinned above it, so every row stays visible
 - Placement: digit pops, sparks + shockwave in its colour, a bell note in the current chord, haptic.
 - Completion: light sweeps across the house, beams and streaks, ROW / COLUMN / BOX / CAGE / ALL 7s
   callouts; simultaneous completions escalate to DOUBLE / TRIPLE / QUAD with bigger sound.
-- Solve: wave of light from the last cell, fireworks, SOLVED / PERFECT, musical resolution, win card.
+- Solve: wave of light from the last cell, fireworks, SOLVED / PERFECT, musical resolution — then
+  play keeps going: ~2.4 s later the next level (next unsolved puzzle in the pack, same mode and
+  difficulty) arrives on its own. A translucent results banner rides at the top meanwhile (time,
+  record or previous best / first clear, mistakes, hints; PERFECT when there are none), never
+  blocks input, and fades after ~6 s or on a tap. Open overlays (Learn, Scores…) pause the
+  advance until they close.
+- **Level entrances** — eight themed styles, rotated so every one plays once per round and never
+  twice in a row, each with a matching exit for the solved board: *Warp* (rushes past you / zooms
+  up out of deep space), *Rain* (squares drop in and stack from the bottom, Tetris-style),
+  *Ripple* (squares well up in rings from one point), *Deal* (cards flip in diagonally), *Vortex*
+  (a spiral in from the edge as the board unwinds), *Shards* (pieces fly in and lock together),
+  *Hologram* (a scanline projects the board row by row), *Nova* (a flash at the centre blooms
+  out). Each has its own arrival sound and a "LEVEL n · Style" callout. Cells stay live during
+  them; Calm effects / reduced motion get a short fade. `?entrance=<style>` pins one (previews,
+  tests).
 - Mistake: shake, red sparks, muted thud, explanation toast.
 - Sound: generative ambient bed per theme; every effect is quantised to the current chord.
 - Settings: Calm / Vivid / Epic effects, sound, music, haptics; `prefers-reduced-motion` honoured.
@@ -144,7 +158,10 @@ While the sheet is open the board is pinned above it, so every row stays visible
 ## 6. Stats & storage
 
 Per mode-difficulty: solved ids, best time; total solves; daily streak; per-technique hint counts
-(shown on the Learn screen). Everything is local (localStorage), no accounts.
+(shown on the Learn screen); a results history (last 300 levels: time, mistakes, hints, perfect,
+record / first clear). **Scores** (home footer and the in-game menu) shows records per mode and
+difficulty and the recent levels, filterable by mode. Levels are numbered by their place in the
+pack. Everything is local (localStorage), no accounts.
 
 ---
 

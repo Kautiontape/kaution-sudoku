@@ -64,6 +64,8 @@
  *   solved       2.3 s of noise riser + swelling chord + accelerating 14-note cascade while the bed
  *                breathes out; then the tonic lands: strummed 6-note bell chord, long bloom, thump,
  *                sparkle shower, and the bed returns on the tonic. ~6 s.                 peak 0.48
+ *   level(s)     a level arriving: noise sweep (rising, or falling for rain / hologram) into a
+ *                5-note strummed chord whose shape and speed vary by style, plus a soft thump. ~0.9 s.
  *   mistake      muted thud (root + a beating minor second, 420 Hz lowpass) and a 3-step filtered
  *                square stutter a semitone off a chord tone. RMS frequency ~210 Hz. 0.075/0.025  0.24
  *   hint(r)      2–3 note rising glass chime; each rung starts higher with more FM shine.  0.14–0.25
@@ -141,6 +143,8 @@ export interface SoundEngine {
   complete(kinds: string[]): void;
   /** Puzzle solved: swell + cascading arpeggio + resolution to the tonic, ~4–6 s. */
   solved(): void;
+  /** A new level arriving in entrance style 0..7: a short sweep that lands in a strummed chord. */
+  level(style: number): void;
   /** Wrong move: muted, slightly dissonant low thud with a short glitchy blip. Never harsh. */
   mistake(): void;
   /** Hint opened (rung 0) or advanced (rung 1..4): soft rising chime, a little brighter per rung. */
@@ -355,6 +359,7 @@ function silentSynth(ctx: BaseAudioContext): Synth {
     erase: noop,
     complete: noop,
     solved: noop,
+    level: noop,
     mistake: noop,
     hint: noop,
     queen: noop,
@@ -1207,6 +1212,36 @@ function buildSynth(ctx: BaseAudioContext, dest: AudioNode, opts: SynthOptions):
       }
     },
 
+    level(style: number): void {
+      if (!sfxOn() || !finite(style)) return;
+      const k = ((Math.round(style) % 8) + 8) % 8;
+      const t = nowT();
+      const ch = segmentAt(t).chord;
+      const g = crowd(2);
+      const l = ladder(ch, theme.floor, 18);
+      // Rain falls and the hologram scans down; everything else rises into the landing.
+      const falls = k === 1 || k === 6;
+      const sweep = [0.6, 0.5, 0.42, 0.5, 0.62, 0.55, 0.5, 0.36][k]!;
+      whoosh(t, sweep, falls ? 5600 : 260, falls ? 420 : 6400, LV.riser * 0.6 * g, wetBus, 0.85, 1);
+      const land = t + sweep * 0.85;
+      // The strum: rising, falling or alternating, spread wider for the bigger styles.
+      const up = [0, 2, 4, 6, 8];
+      const order = k % 3 === 0 ? up : k % 3 === 1 ? [...up].reverse() : [0, 8, 2, 6, 4];
+      const gap = [0.045, 0.035, 0.06, 0.05, 0.04, 0.03, 0.055, 0.025][k]!;
+      order.forEach((step, i) => {
+        bell({
+          midi: l[step + (k % 2)] ?? theme.floor + 12,
+          t: land + i * gap,
+          vel: 0.55 + 0.08 * i,
+          pan: (i / 4) * 1.2 - 0.6,
+          level: LV.arp * 0.8 * g,
+          body: 0.15,
+          tauMul: 1.1,
+        });
+      });
+      thump(land, ch.root + 12, LV.thump * 0.8 * g, 0.12);
+    },
+
     mistake(): void {
       if (!sfxOn()) return;
       const t = nowT();
@@ -1553,6 +1588,9 @@ class LazyEngine implements SoundEngine {
   }
   solved(): void {
     this.fx((s) => s.solved());
+  }
+  level(style: number): void {
+    this.fx((s) => s.level(style));
   }
   mistake(): void {
     this.fx((s) => s.mistake());

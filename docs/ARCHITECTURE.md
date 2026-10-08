@@ -42,9 +42,11 @@ src/
     packs.ts              # fetch + decode packs, pick next unsolved
   ui/
     app.ts                # screen router, global layers, stage themes, saved games
-    screens/              # home, sudoku-play, queens-play, learn, settings-sheet, win
-    components/           # sudoku-board (+ cage-paths), queens-board, numpad, hint-sheet, toast
-    fx/                   # background (nebula), particles (FX canvas), callout
+    screens/              # home, sudoku-play, queens-play, learn, settings-sheet, scores
+    components/           # sudoku-board (+ cage-paths), queens-board, numpad, hint-sheet, toast,
+                          # result-banner (post-level stats strip)
+    fx/                   # background (nebula), particles (FX canvas), callout,
+                          # levels (8 themed entrances/exits) + level-order (rotation, spiral, level no.)
     audio/                # synth.ts (engine), theory.ts (themes/harmony), dsp.ts (IR, noise)
     sound.ts              # façade the UI calls; silent until the synth is connected
     cell-refs.ts          # square names in hint text → shared colours for text chips and board rings

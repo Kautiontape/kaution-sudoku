@@ -10,6 +10,7 @@ import type { CandidateMark, CellId, Puzzle } from "../../engine/types";
 import { cageAnchor } from "../../engine/hints/format";
 import { ladderTexts, refColors } from "../cell-refs";
 import { flipOffset, h, s } from "../dom";
+import type { Stage } from "../fx/levels";
 import { DIGIT_COLORS } from "../palette";
 import { cagePath, colorCages } from "./cage-paths";
 
@@ -44,6 +45,8 @@ export class SudokuBoard {
   /** Rings around the squares the hint text names, one per cell, made on first use. */
   private refG: SVGGElement;
   private refRects = new Map<CellId, SVGRectElement>();
+  private refSvg: SVGSVGElement;
+  private sums: HTMLElement;
   private cagePaths = new Map<number, SVGPathElement>();
   private cageOfCell = new Int16Array(81).fill(-1);
   private hint: SudokuHint | null = null;
@@ -106,9 +109,9 @@ export class SudokuBoard {
     this.svg.append(defs, this.tintG, grid, this.cageG, this.hintG);
     // Rings get their own layer: above selected and focused cells, below the digits.
     this.refG = s("g", { class: "refs" });
-    const refSvg = s("svg", { class: "ref-svg", viewBox: `0 0 ${9 * UNIT} ${9 * UNIT}`, preserveAspectRatio: "none", "aria-hidden": "true" }, this.refG);
+    const refSvg = (this.refSvg = s("svg", { class: "ref-svg", viewBox: `0 0 ${9 * UNIT} ${9 * UNIT}`, preserveAspectRatio: "none", "aria-hidden": "true" }, this.refG));
 
-    const sums = h("div", { class: "sums" });
+    const sums = (this.sums = h("div", { class: "sums" }));
     if (killer) {
       const colors = colorCages(puzzle.cages, CAGE_TINTS);
       puzzle.cages.forEach((cage, i) => {
@@ -168,6 +171,11 @@ export class SudokuBoard {
   }
 
   /** Where a square sits once any glide (the hint sheet opening or closing) has landed. */
+  /** The board for level entrances and exits. */
+  stage(): Stage {
+    return { wrap: this.el, grid: this.board, cells: this.cellEls, n: 9, overlays: [this.svg, this.refSvg, this.sums], tiles: true };
+  }
+
   center(c: CellId): { x: number; y: number } {
     const r = this.cellEls[c]!.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 - flipOffset(this.el) };

@@ -9,19 +9,22 @@ import { QueensGame, type QueensEvent, type SavedQueens } from "../../game/queen
 import { clearSaved, loadSaved, storeSaved, type App, type Screen } from "../app";
 import { HintSheet } from "../components/hint-sheet";
 import { QueensBoard } from "../components/queens-board";
+import { showResult } from "../components/result-banner";
 import { clearToast, toast } from "../components/toast";
 import { flip, formatTime, h, svgIcon } from "../dom";
 import { callout } from "../fx/callout";
+import { levelOf } from "../fx/level-order";
+import { enterLevel, leaveLevel } from "../fx/levels";
 import { buzz } from "../haptics";
 import { ICONS } from "../icons";
 import { DIFFICULTY_LABEL } from "../messages";
 import { REGION_COLORS } from "../palette";
 import { onSettings, settings, updateSettings } from "../settings";
 import { sound } from "../sound";
-import { firstTime, loadProgress, recordHint, recordSolve } from "../store";
+import { finishPuzzle, firstTime, loadProgress, recordHint } from "../store";
 import { openLearn } from "./learn";
+import { openScores } from "./scores";
 import { openSettings } from "./settings-sheet";
-import { showWin } from "./win";
 
 const NAMES: RegionNamer = { region: (i) => REGION_COLORS[i % REGION_COLORS.length]!.name };
 
@@ -62,6 +65,8 @@ class QueensPlay implements Screen {
   /** What the current drag paints: ✕s, or (started on an ✕) empties. */
   private dragMark: typeof CROSS | typeof EMPTY = CROSS;
   private tick = 0;
+  /** After a solve: the countdown to the next level. */
+  private advanceTimer = 0;
   private offs: (() => void)[] = [];
   private discard = false;
   private last: QCell = 0;
@@ -107,7 +112,7 @@ class QueensPlay implements Screen {
         "header",
         { class: "topbar" },
         h("button", { class: "icon-btn", type: "button", "aria-label": "Back to menu", "data-testid": "back", onclick: () => void this.app.home() }, svgIcon(ICONS.back)),
-        h("div", { class: "title" }, h("b", null, "Queens"), h("span", null, `${DIFFICULTY_LABEL[difficulty]} · ${puzzle.n}×${puzzle.n}`)),
+        h("div", { class: "title" }, h("b", null, "Queens"), h("span", null, `${DIFFICULTY_LABEL[difficulty]} · ${puzzle.n}×${puzzle.n} · Lv ${levelOf(puzzle.id)}`)),
         this.timerEl,
         h("button", { class: "icon-btn", type: "button", "aria-label": "Menu", onclick: () => this.openMenu() }, svgIcon(ICONS.menu)),
       ),
@@ -147,6 +152,7 @@ class QueensPlay implements Screen {
     this.render();
     this.save();
     sound.startMusic();
+    requestAnimationFrame(() => this.enter());
     if (firstTime("tip-queens"))
       setTimeout(() => !this.sheet.isOpen && toast("One queen per row, column and colour, and queens never touch, not even diagonally.", "info", 6500, true), 900);
   }
@@ -154,7 +160,25 @@ class QueensPlay implements Screen {
   destroy(): void {
     this.save();
     clearInterval(this.tick);
+    clearTimeout(this.advanceTimer);
     for (const off of this.offs) off();
+  }
+
+  /** The level drops in (the style rotates level to level). Marked on the screen until it lands. */
+  private enter(): void {
+    const { style, ms } = enterLevel(this.board.stage(), this.app, levelOf(this.puzzle.id));
+    this.el.dataset.entering = style.id;
+    window.setTimeout(() => delete this.el.dataset.entering, ms);
+  }
+
+  /** On to the next level: the solved board leaves, the next one arrives. Waits out open overlays. */
+  private advance(): void {
+    if (document.querySelector(".overlay")) {
+      this.advanceTimer = window.setTimeout(() => this.advance(), 600);
+      return;
+    }
+    const ms = leaveLevel(this.board.stage(), this.app);
+    this.advanceTimer = window.setTimeout(() => void this.app.play("queens", this.difficulty, false, this.puzzle.id), ms);
   }
 
   private render(): void {
@@ -363,23 +387,19 @@ class QueensPlay implements Screen {
     this.app.bg.pulse(innerWidth / 2, box.top + box.height / 2, "#ffffff", 2.5);
     sound.solved();
     buzz("solved");
-    recordSolve("queens", this.difficulty, this.puzzle.id, g.elapsedMs);
+    const result = finishPuzzle({
+      mode: "queens",
+      difficulty: this.difficulty,
+      id: this.puzzle.id,
+      level: levelOf(this.puzzle.id),
+      time: g.elapsedMs,
+      mistakes: g.mistakes,
+      hints: g.hintsUsed,
+    });
     clearSaved("queens");
-    setTimeout(
-      () =>
-        showWin(this.el, {
-          mode: "queens",
-          difficulty: this.difficulty,
-          perfect,
-          time: g.elapsedMs,
-          mistakes: g.mistakes,
-          hints: g.hintsUsed,
-          techniques: this.puzzle.meta?.techniques ?? [],
-          onNext: () => void this.app.play("queens", this.difficulty, false, this.puzzle.id),
-          onHome: () => void this.app.home(),
-        }),
-      2300,
-    );
+    // The results ride along at the top while the next level drops in: play never stops.
+    window.setTimeout(() => showResult(result), 600);
+    this.advanceTimer = window.setTimeout(() => this.advance(), ADVANCE_MS);
   }
 
   private openHint(): void {
@@ -447,6 +467,7 @@ class QueensPlay implements Screen {
           storeSaved("queens", { difficulty: this.difficulty, entry: encodeQueens(this.puzzle), state: new QueensGame(this.puzzle).toJSON() });
           void this.app.play("queens", this.difficulty, true);
         }),
+        item("Scores", ICONS.trophy, () => openScores()),
         item("How to play & techniques", ICONS.book, () => openLearn("last-cell")),
         item("Settings", ICONS.gear, () => openSettings()),
       ),
@@ -454,6 +475,9 @@ class QueensPlay implements Screen {
     document.body.append(menu);
   }
 }
+
+/** From the solve to the next level: the fireworks play and the finale's chord resolves first. */
+const ADVANCE_MS = 2400;
 
 function conflictText(g: QueensGame, a: QCell, b: QCell): string {
   const n = g.n;

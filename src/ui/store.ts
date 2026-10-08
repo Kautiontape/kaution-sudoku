@@ -79,6 +79,53 @@ export function recordSolve(mode: string, difficulty: string, id: string, ms: nu
   return p;
 }
 
+/** One finished level, as the results banner and the Scores screen show it. */
+export interface ResultEntry {
+  mode: string;
+  difficulty: string;
+  id: string;
+  level: number;
+  time: number;
+  mistakes: number;
+  hints: number;
+  /** No mistakes and no hints. */
+  perfect: boolean;
+  /** Beat the best time for this mode and difficulty. */
+  record: boolean;
+  /** The first solve at this mode and difficulty. */
+  first: boolean;
+  /** The best time before this solve, if there was one. */
+  prevBest?: number;
+  /** When it was solved (ms since the epoch). */
+  at: number;
+}
+
+const RESULTS_MAX = 300;
+
+/** Finished levels, newest first. */
+export function loadResults(): ResultEntry[] {
+  return load<ResultEntry[]>("results", []);
+}
+
+/** Record a solved level: progress (solved list, best time, streak) plus the results history. */
+export function finishPuzzle(
+  r: Pick<ResultEntry, "mode" | "difficulty" | "id" | "level" | "time" | "mistakes" | "hints">,
+  now = Date.now(),
+): ResultEntry {
+  const prevBest = loadProgress().best[`${r.mode}-${r.difficulty}`];
+  recordSolve(r.mode, r.difficulty, r.id, r.time);
+  const entry: ResultEntry = {
+    ...r,
+    perfect: r.mistakes === 0 && r.hints === 0,
+    record: prevBest !== undefined && r.time < prevBest,
+    first: prevBest === undefined,
+    ...(prevBest !== undefined ? { prevBest } : {}),
+    at: now,
+  };
+  save("results", [entry, ...loadResults()].slice(0, RESULTS_MAX));
+  return entry;
+}
+
 export function recordHint(technique: string): void {
   const p = loadProgress();
   p.hinted[technique] = (p.hinted[technique] ?? 0) + 1;

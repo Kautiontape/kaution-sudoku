@@ -24,6 +24,9 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
 - **Comfortable input.** Long-press a digit to pencil it; drag across cells to pencil a digit into
   all of them; auto-notes; unlimited undo; keyboard on desktop. In Queens: tap for ✕ (tap again to
   take it off), double-tap for a queen, hold to clear, drag to ✕ many.
+- **Levels that keep coming.** Finish one and the next drops in on its own — with one of eight
+  themed entrances (Warp, Rain, Ripple, Deal, Vortex, Shards, Hologram, Nova) — while a
+  translucent banner shows your time, record, mistakes and hints. **Scores** keeps the history.
 - **Queens scratch.** Try queens and ✕s on a what-if layer that never counts — no mistakes, no
   right/wrong tells — then wipe back to exactly where you were, or keep it.
 - **Mistakes that teach.** "Row 6 already has a 5." "That cage already has a 7." "This 3-cell cage
