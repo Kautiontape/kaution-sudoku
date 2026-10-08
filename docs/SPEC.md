@@ -176,8 +176,9 @@ marks anything (all three modes).
   play keeps going: ~2.4 s later the next level (next unsolved puzzle in the pack, same mode and
   difficulty) arrives on its own. A translucent results banner rides at the top meanwhile (time,
   record or previous best / first clear, mistakes, hints; PERFECT when there are none), never
-  blocks input, and fades after ~6 s or on a tap. Open overlays (Learn, Scores…) pause the
-  advance until they close.
+  blocks input, and fades after ~6 s or on a tap. While it shows, the play screen's top bar,
+  progress and stats step aside so nothing shows through it. Open overlays (Learn, Scores…) pause
+  the advance until they close.
 - **Level entrances** — eight themed styles, rotated so every one plays once per round and never
   twice in a row, each with a matching exit for the solved board: *Warp* (rushes past you / zooms
   up out of deep space), *Rain* (squares drop in and stack from the bottom, Tetris-style),

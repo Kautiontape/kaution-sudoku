@@ -2086,6 +2086,17 @@ body:has(.play.hint-open) .toasts {
   animation: result-out 0.35s ease-in forwards;
 }
 
+/* The banner covers the top of the play screen, so the top bar, progress and stats step aside
+   until it goes (on its own, or with a tap) instead of showing through it. */
+.play :is(.topbar, .progress, .stats) {
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+body:has(.result:not(.out)) .play :is(.topbar, .progress, .stats) {
+  opacity: 0;
+  visibility: hidden;
+}
+
 @keyframes result-in {
   from {
     opacity: 0;

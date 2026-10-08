@@ -256,7 +256,13 @@ test("classic easy can be solved by hints; the next level follows on its own and
   await expect(result).toContainText(/Solved|Perfect/);
   await expect(result).toContainText("Level 1");
   await expect(result).toContainText("first clear");
+  // The banner covers the top of the screen: the top bar, progress and stats step aside under it…
+  const top = [".play .topbar", ".play .progress", ".play .stats"];
+  for (const sel of top) await expect(page.locator(sel)).toBeHidden();
   await page.screenshot({ path: "test-results/screens/result-banner.png" });
+  await result.click(); // …until it goes: a tap, or on its own
+  await expect(result).toHaveCount(0);
+  for (const sel of top) await expect(page.locator(sel)).toBeVisible();
   // No card to dismiss: the next level drops in by itself.
   await expect(page.locator(".play .title")).toContainText("Lv 2", { timeout: 8000 });
   await expect(page.getByRole("gridcell")).toHaveCount(81);
