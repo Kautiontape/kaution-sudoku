@@ -96,6 +96,37 @@ test("hint ladder climbs where → what → why and applies a step", async ({ pa
   await expect(page.locator(".stats")).toContainText("Hints 1");
 });
 
+test("hint text colours each square it names and rings that square in the same colour", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  await page.getByTestId("tool-hint").click();
+  await page.getByTestId("hint-next").click();
+  await page.getByTestId("hint-next").click(); // → why: the reasoning names squares
+  const chips = page.getByTestId("hint-sheet").locator(".ref");
+  await expect(chips.first()).toBeVisible();
+  const named = await chips.evaluateAll((els) => els.map((el) => ({ name: (el as HTMLElement).dataset.ref!, color: (el as HTMLElement).style.getPropertyValue("--ref") })));
+  const squares = new Map(named.map((x) => [x.name, x.color]));
+  await expect(page.locator(".ref-ring.on")).toHaveCount(squares.size);
+  for (const [name, color] of squares) {
+    const cell = (Number(name[1]) - 1) * 9 + Number(name[3]) - 1;
+    await expect(cellLocator(page, cell)).toHaveClass(/h-ref/);
+    const ring = page.locator(`.ref-ring.on[data-cell="${cell}"]`);
+    expect(await ring.evaluate((el) => (el as SVGElement).style.getPropertyValue("--ref"))).toBe(color);
+  }
+  // The whole board stays above the sheet, so no ringed square hides behind it.
+  const overlap = async () => {
+    const b = (await page.getByTestId("board").boundingBox())!;
+    const s = (await page.getByTestId("hint-sheet").boundingBox())!;
+    return b.y + b.height - s.y;
+  };
+  await expect.poll(overlap).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: "test-results/screens/hint-refs.png" });
+  // Tapping a name pulses its square.
+  await chips.first().click();
+  await expect(page.locator(".ref-ring.flash")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".ref-ring.on")).toHaveCount(0);
+});
+
 test("classic easy can be solved entirely by following hints", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/?play=classic-easy");
@@ -167,6 +198,26 @@ test("queens: tap cycles ✕ → queen, conflicts are explained, hints solve it"
   await expect(page.locator(".qcell.queen")).toHaveCount(n);
 });
 
+test("queens: squares named in a hint take their region's colour and light up", async ({ page }) => {
+  await page.goto("/?play=queens-medium");
+  await page.getByTestId("tool-hint").click();
+  await page.getByTestId("hint-next").click();
+  await page.getByTestId("hint-next").click();
+  const chips = page.getByTestId("hint-sheet").locator(".ref");
+  await expect(chips.first()).toBeVisible();
+  const n = Math.round(Math.sqrt(await page.locator(".qcell").count()));
+  const named = await chips.evaluateAll((els) => els.map((el) => ({ name: (el as HTMLElement).dataset.ref!, color: (el as HTMLElement).style.getPropertyValue("--ref") })));
+  const squares = new Map(named.map((x) => [x.name, x.color]));
+  await expect(page.locator(".qcell.h-ref")).toHaveCount(squares.size);
+  for (const [name, color] of squares) {
+    const [, r, c] = /^r(\d+)c(\d+)$/.exec(name)!;
+    const cell = page.locator(`.qcell[data-cell="${(Number(r) - 1) * n + Number(c) - 1}"]`);
+    await expect(cell).toHaveClass(/h-ref/);
+    expect(await cell.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--rc"))).toBe(color);
+  }
+  await page.screenshot({ path: "test-results/screens/queens-hint-refs.png" });
+});
+
 test("learn and settings overlays open and close", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("open-learn").click();
@@ -195,6 +246,10 @@ test("learn cards show a worked example on a real board", async ({ page }) => {
   await card.getByTestId("example-hidden-single").click();
   await expect(card.locator(".example .board .cell")).toHaveCount(81);
   await expect(card.locator(".example-do")).toContainText("Place");
+  // The explanation's square names match rings on the example board.
+  await expect(card.locator(".example-text .ref").first()).toBeVisible();
+  await expect(card.locator(".example .ref-ring.on")).not.toHaveCount(0);
+  await card.screenshot({ path: "test-results/screens/learn-example.png" });
   await page.getByRole("tab", { name: "Queens" }).click();
   const q = page.locator("#tech-last-cell");
   await q.locator("summary").click();

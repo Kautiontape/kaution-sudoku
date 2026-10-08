@@ -47,6 +47,7 @@ src/
     fx/                   # background (nebula), particles (FX canvas), callout
     audio/                # synth.ts (engine), theory.ts (themes/harmony), dsp.ts (IR, noise)
     sound.ts              # façade the UI calls; silent until the synth is connected
+    cell-refs.ts          # square names in hint text → shared colours for text chips and board rings
     palette.ts settings.ts store.ts haptics.ts icons.ts messages.ts dom.ts style.css
   main.ts
 public/
@@ -75,7 +76,10 @@ tests/
 - **Steps** carry structured `explain` data, `focus` (where to look), `marks` (candidate roles:
   place / elim / key / alt / on / off / digit), `links` (chain arrows), `sources` (digits that
   justify a single) and `virtualCages` (45-rule cages). Templates in `hints/` turn `explain` into
-  the four rung texts; the board turns the rest into visuals.
+  the four rung texts; the board turns the rest into visuals. Square names in those texts are
+  coloured by `ui/cell-refs.ts`; each board computes the colours for the visible rungs itself
+  (`refColors`), and the hint sheet asks the board for the same map, so text and rings always
+  agree.
 - **Hint state** = basic candidates narrowed by the player's notes where they have any. So an
   elimination-only step is "remembered" once applied (it's written into notes), and hints always
   reason about what the player can see.

@@ -67,6 +67,24 @@ export function formatTime(ms: number): string {
 
 export const reducedMotion = (): boolean => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+const flips = new WeakMap<Element, Animation>();
+
+/** Apply a layout change, then glide `el` from where it was to where it lands (FLIP). */
+export function flip(el: HTMLElement, change: () => void, ms = 380): void {
+  const before = el.getBoundingClientRect().top;
+  flips.get(el)?.cancel();
+  change();
+  const dy = before - el.getBoundingClientRect().top;
+  if (Math.abs(dy) < 1 || reducedMotion() || !el.animate) return;
+  flips.set(el, el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: ms, easing: "cubic-bezier(0.2, 1, 0.3, 1)" }));
+}
+
+/** How far a running flip() still has `el` displaced vertically (0 once it has landed). */
+export function flipOffset(el: Element): number {
+  const t = getComputedStyle(el).transform;
+  return t && t !== "none" ? new DOMMatrixReadOnly(t).m42 : 0;
+}
+
 /** Center of an element in viewport coordinates. */
 export function centerOf(el: Element): { x: number; y: number } {
   const r = el.getBoundingClientRect();

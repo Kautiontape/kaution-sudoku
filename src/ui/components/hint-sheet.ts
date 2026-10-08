@@ -2,9 +2,11 @@
  * The hint ladder as a bottom sheet. Each tap reveals the next rung:
  *   1 Where → 2 What (technique named) → 3 Why (full reasoning, board lights up) → 4 Do (apply).
  * Mistake / notes hints climb the same ladder, ending in a fix instead of a step.
+ * Every square the text names ("r9c8") is coloured, and the board rings it in the same colour.
  */
 import type { HintCommon } from "../../engine/hint-types";
 import { TIER_NAMES } from "../../engine/hint-types";
+import { ladderTexts, refNodes } from "../cell-refs";
 import { h, svgIcon } from "../dom";
 import { ICONS } from "../icons";
 
@@ -14,6 +16,10 @@ export interface HintSheetHandlers {
   onApply(): void;
   onLearn(technique: string): void;
   onClose(): void;
+  /** Colours for the squares named in the visible text — the board's, so text and board match. */
+  refColors(texts: readonly string[]): ReadonlyMap<string, string>;
+  /** A square's name was tapped. */
+  onRef(name: string): void;
 }
 
 const RUNG_LABELS = ["", "Where", "What", "Why", "Do"];
@@ -85,9 +91,11 @@ export class HintSheet {
     const rows: HTMLElement[] = [];
     const ladder = hint.ladder;
     const texts: (string | string[])[] = ["", ladder.where, ladder.what, ladder.why, ladder.do];
+    const colors = this.handlers.refColors(ladderTexts(ladder, r));
+    const para = (p: string) => h("p", null, ...refNodes(p, colors, (name) => this.handlers.onRef(name)));
     for (let i = 1; i <= r; i++) {
       const t = texts[i]!;
-      const content = Array.isArray(t) ? t.map((p) => h("p", null, p)) : [h("p", null, t)];
+      const content = Array.isArray(t) ? t.map(para) : [para(t)];
       rows.push(
         h(
           "div",

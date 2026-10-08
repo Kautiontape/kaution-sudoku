@@ -84,6 +84,14 @@ Before any step, the hint checks, in order:
 Hint text is generated from structured `Step.explain` data via per-technique templates (no LLM,
 no prose in techniques). "Learn" on the sheet opens that technique's guide.
 
+**Named squares.** Every `r{row}c{col}` in the visible rungs is drawn as a chip in an accent
+colour, and the board rings that square in the same colour (from rung 1 on). Colours go by first
+mention; squares listed together ("r1c9, r2c9 and r3c9", "r1c1 or r1c7") share one, and a square
+keeps its colour wherever it comes up again. No red or green — those mean eliminate and place.
+In Queens a name takes the colour of the square's region (hints name regions by colour). Tapping
+a name pulses its ring. Learn examples and the Σ45 lens equation colour names the same way.
+While the sheet is open the board is pinned above it, so every row stays visible.
+
 ### Technique coverage
 - **Sudoku (classic + killer):** full house, hidden/naked singles, pointing, box/line reduction,
   naked/hidden pairs–quads, X-Wing, Swordfish, Jellyfish, finned fish, Skyscraper, 2-String Kite,

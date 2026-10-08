@@ -4,11 +4,12 @@
  * justify a step, chain arrows between candidates, and virtual (45-rule) cages.
  */
 import { digitsOf } from "../../engine/combos";
-import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseIndex, rowOf } from "../../engine/geometry";
+import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseIndex, parseCellName, rowOf } from "../../engine/geometry";
 import type { SudokuHint } from "../../engine/hints/index";
 import type { CandidateMark, CellId, Puzzle } from "../../engine/types";
 import { cageAnchor } from "../../engine/hints/format";
-import { h, s } from "../dom";
+import { ladderTexts, refColors } from "../cell-refs";
+import { flipOffset, h, s } from "../dom";
 import { DIGIT_COLORS } from "../palette";
 import { cagePath, colorCages } from "./cage-paths";
 
@@ -40,6 +41,9 @@ export class SudokuBoard {
   private tintG: SVGGElement;
   private cageG: SVGGElement;
   private hintG: SVGGElement;
+  /** Rings around the squares the hint text names, one per cell, made on first use. */
+  private refG: SVGGElement;
+  private refRects = new Map<CellId, SVGRectElement>();
   private cagePaths = new Map<number, SVGPathElement>();
   private cageOfCell = new Int16Array(81).fill(-1);
   private hint: SudokuHint | null = null;
@@ -100,6 +104,9 @@ export class SudokuBoard {
     this.cageG = s("g", { class: "cages" });
     this.hintG = s("g", { class: "hint-layer" });
     this.svg.append(defs, this.tintG, grid, this.cageG, this.hintG);
+    // Rings get their own layer: above selected and focused cells, below the digits.
+    this.refG = s("g", { class: "refs" });
+    const refSvg = s("svg", { class: "ref-svg", viewBox: `0 0 ${9 * UNIT} ${9 * UNIT}`, preserveAspectRatio: "none", "aria-hidden": "true" }, this.refG);
 
     const sums = h("div", { class: "sums" });
     if (killer) {
@@ -124,7 +131,7 @@ export class SudokuBoard {
         this.cellEls[a]!.classList.add("has-sum");
       });
     }
-    this.el = h("div", { class: "board-wrap" }, this.board, this.svg, sums);
+    this.el = h("div", { class: "board-wrap" }, this.board, this.svg, refSvg, sums);
     this.attachInput(onSelect, onDragSelect);
   }
 
@@ -160,9 +167,10 @@ export class SudokuBoard {
     return this.cellEls[c]!;
   }
 
+  /** Where a square sits once any glide (the hint sheet opening or closing) has landed. */
   center(c: CellId): { x: number; y: number } {
     const r = this.cellEls[c]!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 - flipOffset(this.el) };
   }
 
   cellSize(): number {
@@ -222,11 +230,17 @@ export class SudokuBoard {
   // ------------------------------------------------------------------------------------------
   // Animations
 
-  private restart(el: Element, cls: string): void {
+  /** Replay a class-driven animation. With `anim`, only that animation's end clears the class. */
+  private restart(el: Element, cls: string, anim?: string): void {
     el.classList.remove(cls);
-    void (el as HTMLElement).offsetWidth;
+    el.getBoundingClientRect(); // flush styles so the animation restarts (works for SVG too)
     el.classList.add(cls);
-    el.addEventListener("animationend", () => el.classList.remove(cls), { once: true });
+    const done = (e: AnimationEvent) => {
+      if (anim && e.animationName !== anim) return;
+      el.classList.remove(cls);
+      el.removeEventListener("animationend", done as EventListener);
+    };
+    el.addEventListener("animationend", done as EventListener);
   }
 
   pop(c: CellId): void {
@@ -290,10 +304,11 @@ export class SudokuBoard {
   private applyHint(): void {
     const hint = this.hint;
     const rung = this.hintRung;
-    for (const el of this.cellEls) el.classList.remove("h-area", "h-dim", "h-focus", "h-source", "h-target", "h-place", "h-elim");
+    for (const el of this.cellEls) el.classList.remove("h-area", "h-dim", "h-focus", "h-source", "h-target", "h-place", "h-elim", "h-ref");
     while (this.hintG.firstChild) this.hintG.firstChild.remove();
     for (const p of this.cagePaths.values()) p.classList.remove("h-cage");
     this.board.classList.toggle("hinting", !!hint && rung > 0);
+    this.showRefs(hint && rung > 0 ? this.refColors(ladderTexts(hint.ladder, rung)) : new Map());
     if (!hint || rung <= 0) return;
 
     const step = hint.step;
@@ -323,6 +338,40 @@ export class SudokuBoard {
     } else {
       for (const c of hint.cells ?? []) this.cellEls[c]!.classList.add(hint.kind === "mistake" ? "h-elim" : "h-target");
     }
+  }
+
+  /** Colours for the squares named in `texts` (the hint sheet colours the names to match). */
+  refColors(texts: readonly string[]): Map<string, string> {
+    return refColors(texts);
+  }
+
+  /** Ring each named square in its colour. Rings that stay lit aren't rebuilt, so they don't re-animate. */
+  private showRefs(colors: ReadonlyMap<string, string>): void {
+    const lit = new Map<CellId, string>();
+    for (const [name, color] of colors) {
+      const c = parseCellName(name);
+      if (c !== null) lit.set(c, color);
+    }
+    for (const [c, rect] of this.refRects) if (!lit.has(c)) rect.classList.remove("on");
+    for (const [c, color] of lit) {
+      let rect = this.refRects.get(c);
+      if (!rect) {
+        const pad = 3;
+        rect = s("rect", { x: colOf(c) * UNIT + pad, y: rowOf(c) * UNIT + pad, width: UNIT - 2 * pad, height: UNIT - 2 * pad, rx: 13, class: "ref-ring", "data-cell": c });
+        this.refG.append(rect);
+        this.refRects.set(c, rect);
+      }
+      rect.style.setProperty("--ref", color);
+      rect.classList.add("on");
+      this.cellEls[c]!.classList.add("h-ref");
+    }
+  }
+
+  /** Pulse a named square's ring (its name was tapped in the hint text). */
+  flashRef(name: string): void {
+    const c = parseCellName(name);
+    const rect = c === null ? undefined : this.refRects.get(c);
+    if (rect?.classList.contains("on")) this.restart(rect, "flash", "ref-flash");
   }
 
   /** Ghost candidates with SudokuWiki-style roles. */

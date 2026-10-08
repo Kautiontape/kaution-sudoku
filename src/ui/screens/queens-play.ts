@@ -9,8 +9,8 @@ import { QueensGame, type QueensEvent, type SavedQueens } from "../../game/queen
 import { clearSaved, loadSaved, storeSaved, type App, type Screen } from "../app";
 import { HintSheet } from "../components/hint-sheet";
 import { QueensBoard } from "../components/queens-board";
-import { toast } from "../components/toast";
-import { formatTime, h, svgIcon } from "../dom";
+import { clearToast, toast } from "../components/toast";
+import { flip, formatTime, h, svgIcon } from "../dom";
 import { callout } from "../fx/callout";
 import { buzz } from "../haptics";
 import { ICONS } from "../icons";
@@ -78,6 +78,8 @@ class QueensPlay implements Screen {
       onApply: () => this.applyHint(),
       onLearn: (id) => openLearn(id),
       onClose: () => this.closeHint(),
+      refColors: (texts) => this.board.refColors(texts),
+      onRef: (name) => this.board.flashRef(name),
     });
     this.timerEl = h("div", { class: "timer" });
     this.progressEl = h("i");
@@ -135,7 +137,7 @@ class QueensPlay implements Screen {
     this.save();
     sound.startMusic();
     if (firstTime("tip-queens"))
-      setTimeout(() => toast("One queen per row, column and colour, and queens never touch, not even diagonally.", "info", 6500, true), 900);
+      setTimeout(() => !this.sheet.isOpen && toast("One queen per row, column and colour, and queens never touch, not even diagonally.", "info", 6500, true), 900);
   }
 
   destroy(): void {
@@ -291,7 +293,8 @@ class QueensPlay implements Screen {
     if (this.game.solved) return;
     if (this.sheet.isOpen) return this.sheet.advance();
     this.hint = this.game.hint(NAMES);
-    this.el.classList.add("hint-open");
+    clearToast();
+    flip(this.board.el, () => this.el.classList.add("hint-open"));
     this.sheet.open(this.hint);
   }
 
@@ -314,7 +317,7 @@ class QueensPlay implements Screen {
   private closeHint(): void {
     this.sheet.close();
     this.hint = null;
-    this.el.classList.remove("hint-open");
+    flip(this.board.el, () => this.el.classList.remove("hint-open"));
     this.board.showHint(null, 0);
   }
 

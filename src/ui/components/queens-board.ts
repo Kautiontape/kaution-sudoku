@@ -2,10 +2,11 @@
  * Queens board: glowing colour regions with thick borders, crowns and crosses.
  * Input: tap cycles empty → ✕ → queen, long-press drops a queen, dragging crosses cells.
  */
-import { colOf, rowOf } from "../../engine/queens/geometry";
+import { colOf, parseCellName, rowOf } from "../../engine/queens/geometry";
 import type { QueensHint } from "../../engine/queens/hints";
 import { CROSS, QUEEN, type QCell, type QueensPuzzle } from "../../engine/queens/types";
-import { h, svgIcon } from "../dom";
+import { ladderTexts, splitRefs } from "../cell-refs";
+import { flipOffset, h, svgIcon } from "../dom";
 import { ICONS } from "../icons";
 import { REGION_COLORS } from "../palette";
 
@@ -53,6 +54,7 @@ export class QueensBoard {
         "div",
         { class: cls.join(" "), role: "gridcell", "data-cell": String(c), "data-region": String(g), style: { "--rc": color.color } },
         h("span", { class: "qmark" }),
+        h("span", { class: "qref" }),
       );
       this.cells.push(cell);
       this.board.append(cell);
@@ -108,9 +110,10 @@ export class QueensBoard {
     this.board.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
+  /** Where a square sits once any glide (the hint sheet opening or closing) has landed. */
   center(c: QCell): { x: number; y: number } {
     const r = this.cells[c]!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 - flipOffset(this.el) };
   }
 
   cellSize(): number {
@@ -144,11 +147,17 @@ export class QueensBoard {
     this.applyHint();
   }
 
-  private restart(el: Element, cls: string): void {
+  /** Replay a class-driven animation. With `anim`, only that animation's end clears the class. */
+  private restart(el: Element, cls: string, anim?: string): void {
     el.classList.remove(cls);
     void (el as HTMLElement).offsetWidth;
     el.classList.add(cls);
-    el.addEventListener("animationend", () => el.classList.remove(cls), { once: true });
+    const done = (e: AnimationEvent) => {
+      if (anim && e.animationName !== anim) return;
+      el.classList.remove(cls);
+      el.removeEventListener("animationend", done as EventListener);
+    };
+    el.addEventListener("animationend", done as EventListener);
   }
 
   pop(c: QCell): void {
@@ -176,6 +185,27 @@ export class QueensBoard {
     this.restart(this.el, "punch");
   }
 
+  /**
+   * Colours for the squares named in `texts`: each square's own region colour, so a name in the
+   * hint reads as the region it sits in (the text names regions by colour too).
+   */
+  refColors(texts: readonly string[]): Map<string, string> {
+    const colors = new Map<string, string>();
+    for (const text of texts)
+      for (const p of splitRefs(text)) {
+        if (typeof p === "string") continue;
+        const c = parseCellName(p.name, this.n);
+        if (c !== null) colors.set(p.name, REGION_COLORS[this.puzzle.regions[c]! % REGION_COLORS.length]!.color);
+      }
+    return colors;
+  }
+
+  /** Pulse a named square's ring (its name was tapped in the hint text). */
+  flashRef(name: string): void {
+    const el = this.cells[parseCellName(name, this.n) ?? -1];
+    if (el?.classList.contains("h-ref")) this.restart(el.querySelector(".qref")!, "flash", "qref-flash");
+  }
+
   showHint(hint: QueensHint | null, rung: number): void {
     this.hint = hint;
     this.rung = rung;
@@ -183,10 +213,15 @@ export class QueensBoard {
   }
 
   private applyHint(): void {
-    for (const el of this.cells) el.classList.remove("h-area", "h-dim", "h-focus", "h-elim", "h-place", "h-chain", "h-wrong");
+    for (const el of this.cells) el.classList.remove("h-area", "h-dim", "h-focus", "h-elim", "h-place", "h-chain", "h-wrong", "h-ref");
     this.board.classList.toggle("hinting", !!this.hint && this.rung > 0);
     const hint = this.hint;
     if (!hint || this.rung <= 0) return;
+    for (const [name, color] of this.refColors(ladderTexts(hint.ladder, this.rung))) {
+      const el = this.cells[parseCellName(name, this.n) ?? -1];
+      el?.classList.add("h-ref");
+      el?.style.setProperty("--ref", color);
+    }
     const n = this.n;
     const area = new Set<QCell>();
     const step = hint.step;

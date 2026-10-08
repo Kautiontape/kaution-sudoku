@@ -12,6 +12,10 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
   techniques the hints use.
 - **SudokuWiki-style visuals.** Candidates coloured by role (placed, eliminated, pattern, chain
   colours), sight lines from the digits that justify a single, chain arrows, dashed 45-rule cages.
+- **Squares you can find at a glance.** Every square a hint names ("r9c8") gets an accent colour
+  in the text and a ring of the same colour on the board; squares listed together share one, and
+  tapping a name pulses its square. In Queens a name takes its region's colour. While a hint is
+  open the board sits fully above the sheet, so no ringed square hides behind it.
 - **Learn screen.** Rules plus every technique the hint engine knows, grouped by tier: how to spot
   it, why it works, tips, how often hints have shown it to you, and a worked example on a real
   board drawn with the same hint visuals.

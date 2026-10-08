@@ -770,7 +770,14 @@ button:disabled {
 }
 
 .play.hint-open {
-  --board: min(calc(100vw - 20px), calc(52dvh - 86px), 560px);
+  /* 52dvh is what the sheet leaves at its tallest (48dvh); minus the top bar, progress and stats. */
+  --board: min(calc(100vw - 20px), calc(52dvh - 94px - env(safe-area-inset-top)), 560px);
+}
+
+/* The hint-mode board is sized to fit between the stats and the sheet: pin it to the top so no
+   row (and no ringed square) ends up behind the sheet. */
+.play.hint-open .board-area {
+  align-items: flex-start;
 }
 
 .board {
@@ -787,13 +794,19 @@ button:disabled {
   touch-action: none;
 }
 
-.board-svg {
+.board-svg,
+.ref-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   overflow: visible;
+}
+
+/* Above selected / focused cells (z 1, earlier in the tree), below digits (.v, z 2). */
+.ref-svg {
+  z-index: 1;
 }
 
 .cell {
@@ -916,6 +929,7 @@ button:disabled {
 .sums {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -1143,6 +1157,45 @@ button:disabled {
 .cell.h-elim {
   background: rgba(255, 77, 109, 0.22);
   box-shadow: inset 0 0 0 2px var(--bad);
+}
+
+/* A square the hint text names: ringed in the colour its name has in the text. */
+.board.hinting .cell.h-ref {
+  filter: none;
+}
+
+.ref-ring {
+  display: none;
+  fill: color-mix(in srgb, var(--ref) 16%, transparent);
+  stroke: var(--ref);
+  stroke-width: 5;
+  filter: drop-shadow(0 0 5px var(--ref));
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ref-ring.on {
+  display: inline;
+  animation: ref-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.ref-ring.on.flash {
+  animation: ref-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1), ref-flash 0.6s ease-out;
+}
+
+@keyframes ref-in {
+  from {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes ref-flash {
+  30% {
+    stroke-width: 10;
+    fill: color-mix(in srgb, var(--ref) 45%, transparent);
+    transform: scale(1.14);
+  }
 }
 
 .notes i.ghost {
@@ -1382,6 +1435,25 @@ button:disabled {
   margin: 0;
 }
 
+/* A square's name in coaching text, in the colour of its ring on the board. */
+.ref {
+  padding: 0 4px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--ref) 85%, white);
+  background: color-mix(in srgb, var(--ref) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ref) 50%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--ref) 50%, transparent);
+}
+
+.hs-body .ref,
+.example-text .ref {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .hs-actions {
   display: flex;
   gap: 10px;
@@ -1480,6 +1552,12 @@ button:disabled {
   justify-content: center;
   padding: 0 14px;
   pointer-events: none;
+}
+
+/* While a hint is open the sheet owns the bottom of the screen: toasts drop in from the top. */
+body:has(.play.hint-open) .toasts {
+  top: calc(8px + env(safe-area-inset-top));
+  bottom: auto;
 }
 
 .toast {
@@ -2189,6 +2267,7 @@ button:disabled {
 
 .qcell.h-chain::before {
   content: var(--chain);
+  z-index: 2;
   opacity: 1;
   inset: auto auto 4px 5px;
   width: 16px;
@@ -2201,6 +2280,38 @@ button:disabled {
   color: #0a0c1c;
   background: #ffd862;
   box-shadow: 0 0 8px #ffd862;
+}
+
+/* A square the hint names: a ring in a light shade of its region colour, edged dark so it reads on any region. */
+.qref {
+  position: absolute;
+  inset: 4px;
+  z-index: 1;
+  border-radius: 9px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.qboard.hinting .qcell.h-ref {
+  filter: none;
+}
+
+.qcell.h-ref .qref {
+  opacity: 1;
+  border: 3px solid color-mix(in srgb, var(--ref) 45%, white);
+  box-shadow: 0 0 0 2px rgba(4, 5, 13, 0.85), inset 0 0 0 2px rgba(4, 5, 13, 0.6), 0 0 18px 1px color-mix(in srgb, var(--ref) 70%, white);
+  animation: ref-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.qcell.h-ref .qref.flash {
+  animation: ref-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1), qref-flash 0.6s ease-out;
+}
+
+@keyframes qref-flash {
+  30% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(4, 5, 13, 0.85), inset 0 0 0 2px rgba(4, 5, 13, 0.6), 0 0 30px 6px color-mix(in srgb, var(--ref) 70%, white);
+  }
 }
 
 /* ---------------------------------------------------------------- effects levels & motion */

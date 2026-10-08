@@ -41,6 +41,7 @@ Fish (incl. finned), single-digit patterns, wings, colouring, uniqueness (classi
 Manifest, icons, offline service worker, dark stage themes, haptics, effects levels, stats
 (solved, best times, streak, per-technique hint counts), generative audio.
 Learn screen worked examples: a real position per technique, drawn with the hint layer.
+Squares named in hints, examples and the Σ45 lens are colour-matched to rings on the board.
 *Deferred: install prompt UI, daily puzzle, technique mastery (new / learning / solid).*
 
 ## Next

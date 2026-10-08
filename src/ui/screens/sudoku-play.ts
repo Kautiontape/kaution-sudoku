@@ -15,11 +15,12 @@ import type { CellId, Difficulty, House, Puzzle } from "../../engine/types";
 import { loadSudokuPack, pickNext } from "../../game/packs";
 import { SudokuGame, type GameEvent, type SavedSudoku } from "../../game/sudoku-game";
 import { clearSaved, loadSaved, storeSaved, type App, type Screen } from "../app";
+import { refNodes } from "../cell-refs";
 import { HintSheet } from "../components/hint-sheet";
 import { Numpad } from "../components/numpad";
 import { SudokuBoard } from "../components/sudoku-board";
-import { toast } from "../components/toast";
-import { formatTime, h, svgIcon } from "../dom";
+import { clearToast, toast } from "../components/toast";
+import { flip, formatTime, h, svgIcon } from "../dom";
 import { callout } from "../fx/callout";
 import { buzz } from "../haptics";
 import { ICONS } from "../icons";
@@ -99,6 +100,8 @@ class SudokuPlay implements Screen {
       onApply: () => this.applyHint(),
       onLearn: (id) => openLearn(id),
       onClose: () => this.closeHint(),
+      refColors: (texts) => this.board.refColors(texts),
+      onRef: (name) => this.board.flashRef(name),
     });
 
     this.timerEl = h("div", { class: "timer", "data-testid": "timer" });
@@ -164,6 +167,8 @@ class SudokuPlay implements Screen {
     if (firstTime(`tip-${mode}`))
       setTimeout(
         () =>
+          // Skipped if they've already found Hint: the open sheet would sit under it.
+          !this.sheet.isOpen &&
           toast(
             mode === "killer"
               ? "Each dashed cage adds up to its number. Stuck? Tap Hint: every tap reveals a little more, and Σ45 works out a house for you."
@@ -280,6 +285,9 @@ class SudokuPlay implements Screen {
     const kind = this.lensKind!;
     const house = { kind, index: kind === "row" ? rowOf(c) : kind === "col" ? colOf(c) : boxOf(c) };
     const eq = regionEquation(this.puzzle.cages, this.game.grid, [house]);
+    const readable = eq && eq.empty.length <= LENS_MAX;
+    // Innies and outies are named in the colour of their rings on the board.
+    const lensColors = new Map(readable ? eq.empty.map((x) => [cellName(x), eq.side === "innies" ? LENS_IN : LENS_OUT] as const) : []);
     const chip = (k: "row" | "col" | "box", label: string) =>
       h("button", { class: `lens-chip${k === kind ? " active" : ""}`, type: "button", onclick: () => this.setLens(k) }, label);
     this.cageBar!.classList.add("lens-mode");
@@ -288,9 +296,8 @@ class SudokuPlay implements Screen {
       chip("row", `Row ${rowOf(c) + 1}`),
       chip("col", `Col ${colOf(c) + 1}`),
       chip("box", `Box ${boxOf(c) + 1}`),
-      h("span", { class: "lens-eq", "data-testid": "lens-eq" }, lensText(eq, houseName(house))),
+      h("span", { class: "lens-eq", "data-testid": "lens-eq" }, ...refNodes(lensText(eq, houseName(house)), lensColors)),
     );
-    const readable = eq && eq.empty.length <= LENS_MAX;
     this.board.setLens({
       region: houseCells(house),
       innies: readable && eq.side === "innies" ? eq.empty : [],
@@ -557,7 +564,8 @@ class SudokuPlay implements Screen {
       return;
     }
     this.hint = this.game.hint();
-    this.el.classList.add("hint-open");
+    clearToast();
+    flip(this.board.el, () => this.el.classList.add("hint-open"));
     this.sheet.open(this.hint);
   }
 
@@ -597,7 +605,7 @@ class SudokuPlay implements Screen {
   private closeHint(): void {
     this.sheet.close();
     this.hint = null;
-    this.el.classList.remove("hint-open");
+    flip(this.board.el, () => this.el.classList.remove("hint-open"));
     this.board.showHint(null, 0, null);
   }
 
@@ -648,6 +656,9 @@ class SudokuPlay implements Screen {
 
 /** Most open cells the lens will treat as a readable sum. */
 const LENS_MAX = 4;
+/** The lens's ring colours for innies and outies (style.css .lens-in / .lens-out). */
+const LENS_IN = "#46d9ff";
+const LENS_OUT = "#ff7ad9";
 
 function lensText(eq: RegionEquation | null, region: string): string {
   if (!eq) return `Every cage fits inside ${region} — nothing pokes out.`;
