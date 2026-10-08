@@ -1,13 +1,14 @@
 /**
- * Digit pad. Tap = place (or pencil in notes mode); long-press = pencil without switching modes.
- * Each key shows how many of that digit are still missing; finished digits dim out.
+ * Digit pad. Tap = place (or pencil in notes mode); hold = light that digit up across the grid,
+ * placing nothing. Each key shows how many of that digit are still missing; finished digits dim.
  */
 import { h } from "../dom";
 import { DIGIT_COLORS } from "../palette";
 
 export interface NumpadHandlers {
   onDigit(d: number): void;
-  onNote(d: number): void;
+  /** The key was held: show where that digit is, don't place it. */
+  onHold(d: number): void;
 }
 
 const LONG_PRESS_MS = 380;
@@ -37,7 +38,7 @@ export class Numpad {
         timer = window.setTimeout(() => {
           long = true;
           key.classList.add("long");
-          handlers.onNote(d);
+          handlers.onHold(d);
         }, LONG_PRESS_MS);
       });
       const end = () => {

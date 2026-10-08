@@ -31,9 +31,10 @@ test("classic: placing, a teaching mistake, and undo", async ({ page }) => {
   await expect(cellLocator(page, target!.cell).locator(".v")).toHaveText("");
 });
 
-test("classic: notes mode pencils candidates; long-press does too", async ({ page }) => {
+test("classic: notes mode pencils candidates; holding a digit lights it up and places nothing", async ({ page }) => {
   await page.goto("/?play=classic-easy");
-  const empty = (await readBoard(page)).find((x) => !x.value)!;
+  const board = await readBoard(page);
+  const empty = board.find((x) => !x.value)!;
   await cellLocator(page, empty.cell).click();
   await page.getByTestId("tool-notes").click();
   await expect(page.locator(".play.notes-mode")).toHaveCount(1);
@@ -42,8 +43,10 @@ test("classic: notes mode pencils candidates; long-press does too", async ({ pag
   await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(1);
   await page.screenshot({ path: "test-results/screens/notes-mode.png" });
   await page.getByTestId("tool-notes").click();
-  await digitKey(page, 5).click({ delay: 600 }); // long press
-  await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(2);
+  await digitKey(page, 5).click({ delay: 600 }); // hold
+  await expect(page.locator(".cell.same")).toHaveCount(board.filter((x) => x.value === "5").length);
+  await expect(cellLocator(page, empty.cell).locator(".v")).toHaveText("");
+  await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(1);
 });
 
 test("classic: dragging across empty cells pencils a digit into all of them", async ({ page }) => {
@@ -61,10 +64,54 @@ test("classic: dragging across empty cells pencils a digit into all of them", as
   await page.mouse.up();
   await expect(page.locator(".cell.msel")).not.toHaveCount(0);
   await digitKey(page, 7).click();
+  const selected: number[] = [];
   for (const x of run) {
     if (!(await cellLocator(page, x.cell).evaluate((el) => el.classList.contains("msel")))) continue;
+    selected.push(x.cell);
     await expect(cellLocator(page, x.cell).locator(".notes i.on")).toHaveText("7");
   }
+  // Erase wipes the whole selection.
+  await page.getByTestId("tool-erase").click();
+  for (const c of selected) await expect(cellLocator(page, c).locator(".notes i.on")).toHaveCount(0);
+});
+
+test("classic: a drag that starts on the selected cell only selects; a tap there repeats the digit", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const run = (await readBoard(page)).filter((x) => x.r === 4 && !x.value).slice(0, 3);
+  test.skip(run.length < 2, "row 5 has fewer than two empty cells");
+  const first = cellLocator(page, run[0]!.cell);
+  await first.click();
+  await page.getByTestId("tool-notes").click();
+  await digitKey(page, 7).click(); // pencils 7; 7 is now the digit a tap would repeat
+  await expect(first.locator(".notes i.on")).toHaveText("7");
+  const box = async (c: number) => (await cellLocator(page, c).boundingBox())!;
+  const a = await box(run[0]!.cell);
+  const b = await box(run[run.length - 1]!.cell);
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.locator(".cell.msel")).not.toHaveCount(0);
+  await expect(first.locator(".notes i.on")).toHaveText("7"); // the press didn't toggle it
+  await first.click(); // select just this cell…
+  await first.click(); // …and a tap on it repeats 7 (in notes mode: toggles it off)
+  await expect(first.locator(".notes i.on")).toHaveCount(0);
+});
+
+test("classic: Shift- or Ctrl-click adds cells to the selection", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const empties = (await readBoard(page)).filter((x) => !x.value).slice(0, 3);
+  await cellLocator(page, empties[0]!.cell).click();
+  await cellLocator(page, empties[1]!.cell).click({ modifiers: ["Shift"] });
+  await cellLocator(page, empties[2]!.cell).click({ modifiers: ["ControlOrMeta"] });
+  await expect(page.locator(".cell.msel")).toHaveCount(3);
+  await cellLocator(page, empties[2]!.cell).click({ modifiers: ["Shift"] }); // again: out
+  await expect(page.locator(".cell.msel")).toHaveCount(2);
+  // As a real keyboard sends it: Shift held, then the 4 key (key "$", code "Digit4").
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("Digit4");
+  await page.keyboard.up("Shift");
+  for (const x of empties.slice(0, 2)) await expect(cellLocator(page, x.cell).locator(".notes i.on")).toHaveText("4");
 });
 
 test("Backspace erases in the game and never navigates the browser back", async ({ page }) => {

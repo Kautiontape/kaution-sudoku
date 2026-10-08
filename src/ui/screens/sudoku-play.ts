@@ -68,6 +68,10 @@ class SudokuPlay implements Screen {
   /** Cells selected by dragging; digit taps pencil into all of them. */
   private multi: CellId[] = [];
   private activeDigit = 0;
+  /** A digit held on the pad: lit across the grid until the next move. */
+  private peekDigit = 0;
+  /** Whether the cell being pressed was already the selection (a tap on it repeats the last digit). */
+  private pressWasSelected = false;
   private notesMode = false;
   private timerEl: HTMLElement;
   private progressEl: HTMLElement;
@@ -98,8 +102,9 @@ class SudokuPlay implements Screen {
       puzzle,
       (c, e) => this.onCell(c, e),
       (cells) => this.onDragSelect(cells),
+      (c) => this.onCellTap(c),
     );
-    this.numpad = new Numpad({ onDigit: (d) => this.onDigit(d), onNote: (d) => this.onDigit(d, true) });
+    this.numpad = new Numpad({ onDigit: (d) => this.onDigit(d), onHold: (d) => this.peek(d) });
     this.sheet = new HintSheet({
       onRung: (r) => this.onRung(r),
       onApply: () => this.applyHint(),
@@ -233,12 +238,12 @@ class SudokuPlay implements Screen {
       solution: g.solution,
       selected: this.selected,
       multi: this.multi,
-      highlightDigit: st.highlightSame ? selDigit || this.activeDigit : 0,
+      highlightDigit: this.peekDigit || (st.highlightSame ? selDigit || this.activeDigit : 0),
       showWrong: st.checkMistakes,
       cageTint: st.cageTint,
     });
     const counts = g.digitCounts();
-    this.numpad.update(counts.map((n) => 9 - n), this.notesMode, this.activeDigit);
+    this.numpad.update(counts.map((n) => 9 - n), this.notesMode, this.peekDigit || this.activeDigit);
     this.tools.undo!.disabled = !g.canUndo();
     this.tools.notes!.classList.toggle("on", this.notesMode);
     this.tools.notes!.setAttribute("aria-pressed", String(this.notesMode));
@@ -338,21 +343,51 @@ class SudokuPlay implements Screen {
     this.render();
   }
 
+  /**
+   * Press: select the cell. Shift / Ctrl / ⌘ add it to (or take it out of) the selection. Nothing is
+   * placed on a press — that waits for onCellTap, so starting a drag never pencils anything.
+   */
   private onCell(c: CellId, e: PointerEvent): void {
     e.preventDefault();
     sound.unlock();
-    this.multi = [];
-    if (this.selected === c && this.activeDigit && !this.game.given[c] && !this.game.grid[c]) {
-      this.onDigit(this.activeDigit);
+    this.peekDigit = 0;
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      const set = this.multi.length ? [...this.multi] : this.selected !== null ? [this.selected] : [];
+      const i = set.indexOf(c);
+      if (i < 0) set.push(c);
+      else if (set.length > 1) set.splice(i, 1);
+      this.multi = set.length > 1 ? set : [];
+      this.selected = i < 0 ? c : set[set.length - 1]!;
+      this.pressWasSelected = false;
+      sound.ui("select");
+      this.render();
       return;
     }
+    this.pressWasSelected = this.selected === c && this.multi.length <= 1;
+    this.multi = [];
     this.selected = c;
+    if (!this.pressWasSelected) sound.ui("select");
+    this.render();
+  }
+
+  /** A tap (no drag) on the cell that was already selected repeats the last digit. */
+  private onCellTap(c: CellId): void {
+    if (!this.pressWasSelected || this.selected !== c) return;
+    if (this.activeDigit && !this.game.given[c] && !this.game.grid[c]) this.onDigit(this.activeDigit);
+  }
+
+  /** A digit held on the pad lights up across the grid; nothing is placed. */
+  private peek(d: number): void {
+    sound.unlock();
+    this.peekDigit = d;
     sound.ui("select");
+    buzz("note");
     this.render();
   }
 
   private onDigit(d: number, asNote = false): void {
     sound.unlock();
+    this.peekDigit = 0;
     const c = this.selected;
     if (c === null || this.game.given[c]) {
       this.activeDigit = this.activeDigit === d ? 0 : d;
@@ -376,9 +411,11 @@ class SudokuPlay implements Screen {
     this.render();
   }
 
+  /** Erase the selection: every selected cell's digit and notes go, as one undo step. */
   private erase(): void {
-    if (this.selected === null) return;
-    this.game.erase(this.selected);
+    this.peekDigit = 0;
+    if (this.multi.length > 1) this.game.eraseMany(this.multi);
+    else if (this.selected !== null) this.game.erase(this.selected);
   }
 
   private toggleNotes(): void {
@@ -409,7 +446,9 @@ class SudokuPlay implements Screen {
       this.game.redo();
       return;
     }
-    if (/^[1-9]$/.test(k)) return this.onDigit(Number(k), e.shiftKey || e.altKey);
+    // Read the physical key too: with Shift held a US keyboard sends "$" for 4, not "4".
+    const digit = /^[1-9]$/.test(k) ? Number(k) : Number(/^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1] ?? 0);
+    if (digit) return this.onDigit(digit, e.shiftKey || e.altKey);
     if (k === "Backspace" || k === "Delete" || k === "0") {
       e.preventDefault();
       return this.erase();

@@ -58,6 +58,7 @@ export class SudokuBoard {
     private puzzle: Puzzle,
     onSelect: (cell: CellId, e: PointerEvent) => void,
     onDragSelect?: (cells: CellId[]) => void,
+    onTap?: (cell: CellId) => void,
   ) {
     const killer = puzzle.cages.length > 0;
     this.board = h("div", { class: `board${killer ? " killer" : ""}`, role: "grid", "aria-label": "Sudoku board", "data-testid": "board" });
@@ -135,12 +136,17 @@ export class SudokuBoard {
       });
     }
     this.el = h("div", { class: "board-wrap" }, this.board, this.svg, refSvg, sums);
-    this.attachInput(onSelect, onDragSelect);
+    this.attachInput(onSelect, onDragSelect, onTap);
   }
 
-  /** Tap selects a cell; dragging across cells selects them all (for bulk notes). */
-  private attachInput(onSelect: (cell: CellId, e: PointerEvent) => void, onDragSelect?: (cells: CellId[]) => void): void {
+  /**
+   * Press selects a cell; dragging across cells selects them all (for bulk notes). `onTap` fires on
+   * release only if the press never left its cell, so starting a drag is never mistaken for a tap.
+   */
+  private attachInput(onSelect: (cell: CellId, e: PointerEvent) => void, onDragSelect?: (cells: CellId[]) => void, onTap?: (cell: CellId) => void): void {
     let dragging: CellId[] | null = null;
+    let pressed: CellId | null = null;
+    let moved = false;
     const cellAt = (x: number, y: number): CellId | null => {
       const el = document.elementFromPoint(x, y)?.closest<HTMLElement>(".cell");
       return el && this.board.contains(el) ? Number(el.dataset.cell) : null;
@@ -148,6 +154,8 @@ export class SudokuBoard {
     this.board.addEventListener("pointerdown", (e) => {
       const c = cellAt(e.clientX, e.clientY);
       if (c === null) return;
+      pressed = c;
+      moved = false;
       if (onDragSelect) {
         this.board.setPointerCapture?.(e.pointerId);
         dragging = [c];
@@ -158,12 +166,19 @@ export class SudokuBoard {
       if (!dragging || !onDragSelect) return;
       const c = cellAt(e.clientX, e.clientY);
       if (c === null || dragging.includes(c)) return;
+      moved = true;
       dragging.push(c);
       onDragSelect([...dragging]);
     });
-    const end = () => (dragging = null);
-    this.board.addEventListener("pointerup", end);
-    this.board.addEventListener("pointercancel", end);
+    this.board.addEventListener("pointerup", () => {
+      if (pressed !== null && !moved) onTap?.(pressed);
+      dragging = null;
+      pressed = null;
+    });
+    this.board.addEventListener("pointercancel", () => {
+      dragging = null;
+      pressed = null;
+    });
   }
 
   cell(c: CellId): HTMLElement {

@@ -211,10 +211,16 @@ export class SudokuGame {
   }
 
   erase(cell: CellId): void {
-    if (this.solved || this.given[cell]) return;
-    if (!this.grid[cell] && !this.notes[cell]) return;
-    this.commit("erase", [{ cell, digit: [this.grid[cell]!, 0], notes: [this.notes[cell]!, 0] }]);
-    this.emit({ type: "erase", cells: [cell] });
+    this.eraseMany([cell]);
+  }
+
+  /** Wipe several cells at once — digits and notes; givens stay — as one undo step. */
+  eraseMany(cells: readonly CellId[]): void {
+    if (this.solved) return;
+    const hit = cells.filter((c) => !this.given[c] && (this.grid[c] || this.notes[c]));
+    if (!hit.length) return;
+    this.commit("erase", hit.map((c): Change => ({ cell: c, digit: [this.grid[c]!, 0], notes: [this.notes[c]!, 0] })));
+    this.emit({ type: "erase", cells: hit });
   }
 
   toggleNote(cell: CellId, digit: Digit): void {

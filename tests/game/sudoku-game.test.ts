@@ -119,6 +119,22 @@ describe("SudokuGame", () => {
     expect(g.notes[cell("r1c4")]).toBe(maskOf([2]));
   });
 
+  it("erases a whole selection — digits and notes, givens untouched — as one undo step", () => {
+    const g = new SudokuGame(WIKI);
+    g.place(cell("r1c3"), 4);
+    g.toggleNote(cell("r1c4"), 6);
+    g.toggleNote(cell("r1c4"), 2);
+    const events = track(g);
+    g.eraseMany([cell("r1c3"), cell("r1c4"), cell("r1c1"), cell("r1c6")]); // r1c1 given, r1c6 already empty
+    expect(g.grid[cell("r1c3")]).toBe(0);
+    expect(g.notes[cell("r1c4")]).toBe(0);
+    expect(g.grid[cell("r1c1")]).toBe(5);
+    expect(events).toContainEqual({ type: "erase", cells: [cell("r1c3"), cell("r1c4")] });
+    g.undo();
+    expect(g.grid[cell("r1c3")]).toBe(4);
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([2, 6]));
+  });
+
   it("serializes and restores progress", () => {
     const g = new SudokuGame(WIKI);
     g.place(cell("r1c3"), 4);
