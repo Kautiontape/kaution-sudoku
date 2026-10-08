@@ -103,7 +103,10 @@ export class SudokuBoard {
     if (killer) {
       const colors = colorCages(puzzle.cages, CAGE_TINTS);
       puzzle.cages.forEach((cage, i) => {
-        for (const c of cage.cells) this.cageOfCell[c] = i;
+        for (const c of cage.cells) {
+          this.cageOfCell[c] = i;
+          this.cellEls[c]!.dataset.cage = String(cage.id);
+        }
         this.tintG.append(s("path", { d: cagePath(cage.cells, 0, UNIT), class: `tint t${colors[i]}` }));
         const p = s("path", { d: cagePath(cage.cells, 0.085, UNIT), class: "cage" });
         this.cagePaths.set(cage.id, p);

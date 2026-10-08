@@ -57,17 +57,17 @@ export const MARK_COLORS: Record<string, string> = {
 
 /** Queens region colours, chosen to stay distinct from each other on a dark board. */
 export const REGION_COLORS: { color: string; name: string }[] = [
-  { color: "#ff6b8e", name: "pink" },
-  { color: "#ffa04d", name: "orange" },
-  { color: "#ffe066", name: "yellow" },
-  { color: "#8cf05a", name: "green" },
-  { color: "#3fe0c5", name: "teal" },
-  { color: "#4fb6ff", name: "blue" },
-  { color: "#9b85ff", name: "violet" },
-  { color: "#e77bff", name: "magenta" },
-  { color: "#c7a07a", name: "tan" },
-  { color: "#9fb3c8", name: "silver" },
-  { color: "#ff5a4f", name: "red" },
+  { color: "#ff6f9c", name: "pink" },
+  { color: "#ff9f4a", name: "orange" },
+  { color: "#ffd84d", name: "yellow" },
+  { color: "#7fe35c", name: "green" },
+  { color: "#33d6c0", name: "teal" },
+  { color: "#4aa8ff", name: "blue" },
+  { color: "#9b7dff", name: "violet" },
+  { color: "#e86cf5", name: "magenta" },
+  { color: "#d9b38c", name: "sand" },
+  { color: "#a9bdd6", name: "silver" },
+  { color: "#ff5a52", name: "red" },
 ];
 
 export function hexToRgb(hex: string): [number, number, number] {

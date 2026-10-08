@@ -12,7 +12,10 @@ import { Fx } from "./ui/fx/particles";
 import { createHome } from "./ui/screens/home";
 import { createQueensPlay } from "./ui/screens/queens-play";
 import { createSudokuPlay } from "./ui/screens/sudoku-play";
-import { sound } from "./ui/sound";
+import { audio } from "./ui/audio/synth";
+import { connectSound, sound } from "./ui/sound";
+
+connectSound(audio);
 
 const bgCanvas = Object.assign(document.createElement("canvas"), { id: "bg" });
 const fxCanvas = Object.assign(document.createElement("canvas"), { id: "fx" });

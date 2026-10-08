@@ -254,6 +254,7 @@ class QueensPlay implements Screen {
 
   private finale(): void {
     const g = this.game;
+    this.el.dataset.solved = "true";
     this.closeHint();
     this.board.wave(this.last);
     const pts = g.queens().map((q) => ({ ...this.board.center(q), color: REGION_COLORS[g.region(q) % REGION_COLORS.length]!.color }));

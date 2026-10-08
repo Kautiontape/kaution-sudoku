@@ -112,7 +112,7 @@ export function createHome(app: App): Screen {
     h(
       "footer",
       { class: "home-foot" },
-      h("button", { class: "btn ghost", type: "button", "data-testid": "open-learn", onclick: () => openLearn() }, svgIcon(ICONS.book), "Learn techniques"),
+      h("button", { class: "btn ghost", type: "button", "data-testid": "open-learn", onclick: () => openLearn() }, svgIcon(ICONS.book), "Learn"),
       h("button", { class: "btn ghost", type: "button", "data-testid": "open-settings", onclick: () => openSettings() }, svgIcon(ICONS.gear), "Settings"),
     ),
   );

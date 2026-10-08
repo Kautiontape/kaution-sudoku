@@ -222,7 +222,11 @@ class SudokuPlay implements Screen {
     const must = v.combos.filter((m) => !(m & blocked)).reduce((a, m) => a & m, 0x3fe);
     const parts: HTMLElement[] = [
       h("b", null, `${cage.sum}`),
-      h("span", { class: "dim" }, v.empty.length ? `${v.empty.length} of ${cage.cells.length} cells open` : "complete"),
+      h(
+        "span",
+        { class: "dim" },
+        !v.empty.length ? "cage complete" : v.empty.length === cage.cells.length ? `in ${cage.cells.length} cells` : `${v.rem} left in ${v.empty.length}`,
+      ),
       ...chips.slice(0, 12),
     ];
     if (chips.length > 12) parts.push(h("span", { class: "dim" }, `+${chips.length - 12}`));
@@ -420,6 +424,7 @@ class SudokuPlay implements Screen {
 
   private finale(): void {
     const g = this.game;
+    this.el.dataset.solved = "true";
     const fx = this.app.fx;
     this.closeHint();
     this.board.wave(this.lastPlaced);
