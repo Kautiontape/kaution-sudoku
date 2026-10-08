@@ -217,7 +217,14 @@ describe("SudokuGame", () => {
     expect(g.notes[cell("r2c3")]).toBe(maskOf([2, 3, 5, 6, 8, 9]));
     g.undo();
     expect(g.notes[cell("r2c2")]).toBe(maskOf([1, 2, 3, 4, 5, 6, 7, 8, 9]));
-    g.place(cell("r1c1"), 3); // wrong, and no digit can finish the cage: only the 3 comes out
+    g.place(cell("r2c1"), 9); // wrong, and flagged: it doesn't get to narrow the cage
+    expect(g.notes[cell("r2c2")]).toBe(maskOf([1, 2, 3, 4, 5, 6, 7, 8]));
+    g.undo();
+    g.settings.checkMistakes = false; // unflagged, a wrong digit counts like any other…
+    g.place(cell("r2c1"), 9); // 6 left in two cells: 1+5 or 2+4
+    expect(g.notes[cell("r2c2")]).toBe(maskOf([1, 2, 4, 5]));
+    g.undo();
+    g.place(cell("r1c1"), 3); // …unless no digit can finish its cage: then only the 3 comes out
     expect(g.notes[cell("r1c2")]).toBe(maskOf([1, 2, 4, 5, 6, 7, 8, 9]));
     g.undo();
     g.settings.autoClearNotes = false;

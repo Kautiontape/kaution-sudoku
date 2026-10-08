@@ -1204,6 +1204,11 @@ button:disabled {
   filter: none;
 }
 
+/* Once the hint's picture is up, notes outside its squares step aside until it closes. */
+.play .board.hinting .cell.h-quiet .notes {
+  visibility: hidden;
+}
+
 .ref-ring {
   display: none;
   fill: color-mix(in srgb, var(--ref) 16%, transparent);

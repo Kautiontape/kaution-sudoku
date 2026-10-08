@@ -52,8 +52,9 @@ entrances with matching exits and arrival sounds; Scores (records + history).
 
 Hints aim at the next digit: board-only reasoning, placement lookahead with digit-aware
 dependency tracing, chained "why" with a notes nudge; only impossible notes are flagged.
-A hint pencils only the squares its steps mark; applying a round toward a digit writes those
-notes, and auto-clear drops what a killer cage's sum rules out, so they never go stale.
+A hint pencils only the squares its steps mark (other notes step aside while it's open); applying
+a round toward a digit writes those notes, and auto-clear drops what a killer cage's sum rules
+out, so they never go stale.
 
 ## Next
 - Calculator tape UI and multi-house lens (M4).

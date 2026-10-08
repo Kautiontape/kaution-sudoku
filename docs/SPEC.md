@@ -120,7 +120,7 @@ Before any step, the hint checks, in order:
 |---|---|---|
 | 1 Where | which area to look at, no technique named | area tinted, rest dimmed |
 | 2 What | technique name + one-line nudge, tier badge | pattern cells outlined, cages lit |
-| 3 Why | full reasoning with cells, digits and arithmetic (narrowing steps first, if any) | pencils in only the squares the steps mark (never "every other 9"): candidates coloured by role, every step's eliminations struck through; sight lines from justifying digits, chain arrows, dashed virtual cages, the cages involved lit |
+| 3 Why | full reasoning with cells, digits and arithmetic (narrowing steps first, if any) | pencils in only the squares the steps mark (never "every other 9"): candidates coloured by role, every step's eliminations struck through; notes in squares the hint doesn't use step aside until it closes; sight lines from justifying digits, chain arrows, dashed virtual cages, the cages involved lit |
 | 4 Do | places the digit (a round: pencils in what it leaves) | normal feedback |
 
 Hint text is generated from structured `Step.explain` data via per-technique templates (no LLM,

@@ -183,7 +183,8 @@ export class SudokuGame {
       const ch = get(p);
       if (ch.notes[1] & bit(digit)) ch.notes[1] &= off;
     }
-    if (!cage) return;
+    // A digit already flagged wrong doesn't narrow its cage: erasing it would leave the notes short.
+    if (!cage || (digit !== this.solution[cell] && this.settings.checkMistakes)) return;
     let rem = cage.sum;
     let used = 0;
     const empty: CellId[] = [];

@@ -330,7 +330,7 @@ export class SudokuBoard {
   private applyHint(): void {
     const hint = this.hint;
     const rung = this.hintRung;
-    for (const el of this.cellEls) el.classList.remove("h-area", "h-dim", "h-focus", "h-source", "h-target", "h-place", "h-elim", "h-ref");
+    for (const el of this.cellEls) el.classList.remove("h-area", "h-dim", "h-focus", "h-source", "h-target", "h-place", "h-elim", "h-ref", "h-quiet");
     while (this.hintG.firstChild) this.hintG.firstChild.remove();
     for (const p of this.cagePaths.values()) p.classList.remove("h-cage");
     this.board.classList.toggle("hinting", !!hint && rung > 0);
@@ -355,12 +355,17 @@ export class SudokuBoard {
     if (step) for (const id of [...step.focus.cages, ...prior.flatMap((p) => p.focus.cages)]) this.cagePaths.get(id)?.classList.add("h-cage");
     if (rung < 3) return;
 
+    // From "why" on, notes stay in view only in the squares the hint marks, names or outlines; the
+    // play screen hides the rest (style.css .h-quiet), Learn examples keep theirs.
+    const marks = step ? hintMarks(hint) : [];
+    const keep = new Set([...focus, ...marks.map((m) => m.cell)]);
+    for (let c = 0; c < 81; c++) if (!keep.has(c) && !this.cellEls[c]!.classList.contains("h-ref")) this.cellEls[c]!.classList.add("h-quiet");
     if (step) {
       for (const c of step.sources ?? []) this.cellEls[c]!.classList.add("h-source");
       for (const e of [...prior.flatMap((p) => p.eliminations), ...step.eliminations]) this.cellEls[e.cell]!.classList.add("h-target");
       for (const p of step.placements) this.cellEls[p.cell]!.classList.add("h-place");
       // Every step's marks, the narrowing steps' too, in only the squares they mark.
-      this.drawMarks(hintMarks(hint), (step.marks ?? []).filter((m) => m.role === "digit"));
+      this.drawMarks(marks, (step.marks ?? []).filter((m) => m.role === "digit"));
       this.drawSightLines();
       for (const l of step.links ?? []) this.drawLink(l.from, l.to, l.strong);
       for (const vc of [...prior.flatMap((p) => p.virtualCages ?? []), ...(step.virtualCages ?? [])])

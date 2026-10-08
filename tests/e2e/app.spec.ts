@@ -330,13 +330,19 @@ test("killer: a round toward a digit pencils only the squares it names, and Appl
     const round = /on the way to r\dc\d/.test(await sheet.locator(".rung-2").innerText());
     await page.getByTestId("hint-next").click(); // → why
     await expect(page.locator(".board.hinting")).toHaveCount(1);
-    // Each square with hint pencils: whether the text names it, and the digits it keeps unstruck.
+    // Each square showing any pencil, the hint's or the player's: whether the text names it, whether
+    // the hint pencilled it, and the digits left unstruck.
     const drawn = await page.$$eval(".board .cell", (els) =>
       els.flatMap((el) => {
-        const marks = [...el.querySelectorAll(".notes i")].map((n, k) => ({ d: k + 1, shown: n.matches(".on, .ghost, [class*='m-']"), struck: n.matches(".m-elim") }));
-        if (!el.querySelector(".notes i.ghost, .notes i[class*='m-']")) return [];
-        const keep = marks.filter((x) => x.shown && !x.struck).map((x) => x.d);
-        return [{ cell: String((el as HTMLElement).dataset.cell), named: el.classList.contains("h-ref"), keep }];
+        const notes = [...el.querySelectorAll(".notes i")].map((n, k) => ({
+          d: k + 1,
+          shown: n.matches(".on, .ghost, [class*='m-']") && getComputedStyle(n).visibility !== "hidden",
+          struck: n.matches(".m-elim"),
+        }));
+        if (!notes.some((x) => x.shown)) return [];
+        const keep = notes.filter((x) => x.shown && !x.struck).map((x) => x.d);
+        const hinted = !!el.querySelector(".notes i.ghost, .notes i[class*='m-']");
+        return [{ cell: String((el as HTMLElement).dataset.cell), named: el.classList.contains("h-ref"), hinted, keep }];
       }),
     );
     expect(drawn.filter((x) => !x.named)).toEqual([]); // no pencils in squares the text doesn't name
@@ -346,9 +352,9 @@ test("killer: a round toward a digit pencils only the squares it names, and Appl
     await expect(sheet).not.toHaveClass(/open/);
     if (!round) continue;
     rounds++;
-    // The notes become what the hint drew, less what it struck — in those squares and nowhere else.
+    // The notes become what the hint drew, less what it struck — in its squares and nowhere else.
     const after = await readNotes();
-    const expected = { ...before, ...Object.fromEntries(drawn.map((x) => [x.cell, x.keep])) };
+    const expected = { ...before, ...Object.fromEntries(drawn.filter((x) => x.hinted).map((x) => [x.cell, x.keep])) };
     expect(after).toEqual(expected);
   }
   expect(rounds).toBe(3);
