@@ -109,7 +109,7 @@ describe("what a hint pencils", () => {
     expect(hintMarks({})).toEqual([]);
   });
 
-  it("pencils Auto notes' candidates — cage sums applied in killer — minus what hints ruled out", () => {
+  it("pencils what a note may hold — cage sums applied in killer — minus what hints ruled out", () => {
     const p = withDigits({}, [cage(0, 16, ["r1c1", "r1c2"])]);
     const grid = gridFromPuzzle(p);
     expect(shownCandidates(p, grid)[cell("r1c1")]).toBe(maskOf([7, 9]));

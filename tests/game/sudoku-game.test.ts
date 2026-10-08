@@ -241,8 +241,11 @@ describe("SudokuGame", () => {
         const before = Uint16Array.from(g.notes);
         g.applyHint(h);
         if (!h.step!.placements.length) {
-          const squares = new Set(hintMarks(h).map((m) => m.cell));
+          // A round writes what it drew, less what it struck — in its squares and nowhere else.
+          const marks = hintMarks(h);
+          const squares = new Set(marks.map((m) => m.cell));
           for (let c = 0; c < 81; c++) if (!squares.has(c)) expect(g.notes[c]).toBe(before[c]);
+          for (const m of marks) if (m.role !== "elim") expect(g.notes[m.cell]! & (1 << m.digit), `${file} ${cellName(m.cell)}:${m.digit}`).not.toBe(0);
         }
         for (let c = 0; c < 81; c++) if (g.notes[c]) expect(g.notes[c]! & (1 << g.solution[c]!), `${file} ${cellName(c)}`).not.toBe(0);
       }

@@ -19,7 +19,7 @@
  * that notes would have shown it. When the digit is further off, a hint teaches a round of
  * narrowing steps toward it, and applying it pencils in what they leave (`hintMarks` says where).
  */
-import { basicCandidates, comboCandidates } from "../candidates";
+import { basicCandidates } from "../candidates";
 import { techniqueName } from "../catalog";
 import { digitsOf, popcount } from "../combos";
 import { CELL_HOUSES, cellName, houseAt, houseIndex, houseName, HOUSE_CELLS, PEERS } from "../geometry";
@@ -29,7 +29,7 @@ import { TECHNIQUES } from "../techniques";
 import type { Technique } from "../techniques/types";
 import { cageView } from "../techniques/killer";
 import { applyStep, cloneState, createState, isBroken, type SolverState } from "../state";
-import { puzzleKind, type CandidateMark, type CellId, type Digit, type Grid, type House, type Puzzle, type Step } from "../types";
+import type { CandidateMark, CellId, Digit, Grid, House, Puzzle, Step } from "../types";
 import { aDigit, asClause, cageName, cap, cellList, comboList, maskList, numberWord, relation } from "./format";
 import { templateFor } from "./registry";
 
@@ -78,11 +78,27 @@ function boardState(input: HintInput): ReturnType<typeof createState> {
 }
 
 /**
- * The candidates a hint pencils onto the board: what Auto notes would give (cage sums applied, in
- * killer), minus what earlier hints have ruled out. Never a digit the notes check would flag.
+ * What a note may hold: a digit not already in the cell's row, column, box or cage, and (killer) one
+ * some combination of its cage's remaining sum uses. The notes check flags anything else.
+ */
+function legalCandidates(puzzle: Puzzle, grid: Grid): Uint16Array {
+  const legal = basicCandidates(puzzle, grid);
+  if (puzzle.cages.length) {
+    const s = createState(puzzle, grid);
+    for (const cage of puzzle.cages) {
+      const allowed = cageView(s, cage).combos.reduce((m, x) => m | x, 0);
+      for (const c of cage.cells) legal[c]! &= allowed;
+    }
+  }
+  return legal;
+}
+
+/**
+ * The candidates a hint pencils onto the board: what a note may hold, minus what earlier hints have
+ * ruled out. So a hint's own pencils never trip the notes check.
  */
 export function shownCandidates(puzzle: Puzzle, grid: Grid, known?: ArrayLike<number>): Uint16Array {
-  const cand = puzzleKind(puzzle) === "killer" ? comboCandidates(puzzle, grid) : basicCandidates(puzzle, grid);
+  const cand = legalCandidates(puzzle, grid);
   if (known)
     for (let c = 0; c < 81; c++) {
       const left = cand[c]! & ~(known[c] ?? 0);
@@ -151,14 +167,7 @@ interface BadNote {
  */
 function impossibleNotes(input: HintInput): BadNote[] {
   const { puzzle, grid, notes } = input;
-  const legal = basicCandidates(puzzle, grid);
-  if (puzzle.cages.length) {
-    const s = createState(puzzle, grid);
-    for (const cage of puzzle.cages) {
-      const allowed = cageView(s, cage).combos.reduce((m, x) => m | x, 0);
-      for (const c of cage.cells) legal[c]! &= allowed;
-    }
-  }
+  const legal = legalCandidates(puzzle, grid);
   const out: BadNote[] = [];
   for (let c = 0; c < 81; c++) {
     const bad = grid[c] ? 0 : (notes[c] ?? 0) & ~legal[c]! & 0x3fe;

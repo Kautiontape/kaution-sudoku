@@ -356,7 +356,7 @@ export class SudokuGame {
     return sudokuHint({ puzzle: this.puzzle, grid: this.grid, notes: this.notes, solution: this.solution, known: this.known });
   }
 
-  /** The candidates a hint pencils: Auto notes' (cage sums in killer), minus what hints have ruled out. */
+  /** The candidates a hint pencils: what a note may hold, minus what hints have ruled out. */
   hintCandidates(): Uint16Array {
     return shownCandidates(this.puzzle, this.grid, this.known);
   }

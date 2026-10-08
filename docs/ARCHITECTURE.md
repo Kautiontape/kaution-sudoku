@@ -92,9 +92,9 @@ tests/
   placement). Everything a hint rules out goes into `SudokuGame.known` (saved) and back in as
   `HintInput.known`, so rounds build on each other. `hintMarks` is the one list of squares a step
   hint pencils — the board draws ghosts there, and applying a round writes `shownCandidates`
-  (Auto notes' candidates, less `known`) into the same squares. Notes are only checked for digits
-  that are impossible (`impossibleNotes`); auto-clear on placement removes exactly those (cage
-  sums included), so notes a round wrote never trip the check.
+  (what a note may hold, less `known`) into the same squares. Notes are only checked for digits
+  that are impossible (`impossibleNotes`, over the same `legalCandidates`); auto-clear on
+  placement removes exactly those (cage sums included), so notes a round wrote never trip it.
 
 ### Generation
 - Classic: random solved grid → dig 180°-symmetric pairs while the exact solver says unique →

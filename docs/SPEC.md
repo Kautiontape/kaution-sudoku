@@ -102,8 +102,8 @@ When the nearest digit is further than that (the hard openings of tough killers)
 teaches the route in rounds of up to three steps, aimed at a named square ("Two steps on the way
 to r3c1."), with "Do" = "Pencil it in: …". Applying a round pencils in what it leaves, in the
 squares it marks and nowhere else: notes there keep the digits still possible, and a square
-without notes gets its candidates (as Auto notes would have them, less what hints have ruled
-out). The game also remembers what hints have ruled out (saved with the game), so the next hint
+without notes gets every digit a note may hold there (what the notes check allows, less what
+hints have ruled out) — exactly what the hint drew, less what it struck. The game also remembers what hints have ruled out (saved with the game), so the next hint
 picks up from there — and every later hint is shorter for it. Rounds are ~4% of killer-easy
 hints, ~20% of expert.
 
