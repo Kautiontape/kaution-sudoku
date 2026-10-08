@@ -1,6 +1,6 @@
 /* Offline support: network-first for pages, cache-first for hashed assets, and
    stale-while-revalidate for puzzle packs so new packs arrive without blocking play. */
-const CACHE = "cagecoach-v1";
+const CACHE = "nonet-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

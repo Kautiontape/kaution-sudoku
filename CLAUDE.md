@@ -1,4 +1,4 @@
-# CLAUDE.md — Cage Coach
+# CLAUDE.md — Nonet
 
 Sudoku, Killer Sudoku and Queens PWA with a teaching hint ladder and a Tetris Effect–inspired
 feel. Read `docs/SPEC.md` (what), `docs/ARCHITECTURE.md` (how), `docs/MILESTONES.md` (status).

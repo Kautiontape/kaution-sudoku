@@ -2,6 +2,7 @@
  * Local persistence. Everything lives in this browser only; every access is guarded because
  * storage can be unavailable (private windows, blocked site data) and the game must still work.
  */
+// From the game's first name, Cage Coach. Kept so existing saves and stats survive the rename.
 const PREFIX = "cagecoach.";
 
 export function load<T>(key: string, fallback: T): T {

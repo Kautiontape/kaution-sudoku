@@ -5,7 +5,7 @@ const STYLES = ["warp", "rain", "ripple", "deal", "vortex", "shards", "hologram"
 
 test("home shows the three modes and starts a game", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Cage Coach" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nonet" })).toBeVisible();
   for (const m of ["classic", "killer", "queens"]) await expect(page.getByTestId(`mode-${m}`)).toBeVisible();
   await page.getByTestId("mode-classic").locator(".mode-head").click();
   await page.getByTestId("play-classic-easy").click();

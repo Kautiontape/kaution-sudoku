@@ -105,7 +105,7 @@ export function createHome(app: App): Screen {
     h(
       "header",
       { class: "home-head" },
-      h("h1", { class: "wordmark", "aria-label": "Cage Coach" }, h("span", null, "CAGE"), h("span", null, "COACH")),
+      h("h1", { class: "wordmark", "aria-label": "Nonet" }, h("span", null, "NONET")),
       h("p", { class: "tagline" }, "Sudoku · Killer · Queens — with a coach that teaches"),
       streak,
     ),

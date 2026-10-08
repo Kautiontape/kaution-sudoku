@@ -3,7 +3,7 @@
  *
  *   npx tsx scripts/build-artifact.ts <outDir>
  *
- * Produces <outDir>/cage-coach.html (page body only — the host supplies doctype/head/body), plus
+ * Produces <outDir>/nonet.html (page body only — the host supplies doctype/head/body), plus
  * assets/ and packs/ beside it, and prints the supporting-file list. Service worker registration is
  * compiled out (VITE_TARGET=artifact), and the screen sizing adapts to a host frame that already
  * pads for safe areas.
@@ -30,14 +30,14 @@ if (!css.length || !js.length) throw new Error("couldn't find built assets in in
 // Inside a host frame the root already pads for safe areas: size screens to the frame, not 100dvh.
 const frameFit = `html,body{height:100%}#app{height:100%}.play{height:100%;padding-top:0}.home{min-height:100%;padding-top:24px}`;
 const page = [
-  `<title>Cage Coach</title>`,
+  `<title>Nonet</title>`,
   `<meta name="theme-color" content="#03040c">`,
   ...css.map((href) => `<link rel="stylesheet" href="${href.replace(/^\.\//, "")}">`),
   `<style>${frameFit}</style>`,
   `<div id="app"></div>`,
   ...js.map((src) => `<script type="module" src="${src.replace(/^\.\//, "")}"></script>`),
 ].join("\n");
-writeFileSync(join(out, "cage-coach.html"), page + "\n");
+writeFileSync(join(out, "nonet.html"), page + "\n");
 
 cpSync(join(build, "assets"), join(out, "assets"), { recursive: true });
 cpSync(join(build, "packs"), join(out, "packs"), { recursive: true });
@@ -47,4 +47,4 @@ const files = [
   ...readdirSync(join(out, "assets")).map((f) => `assets/${f}`),
   ...readdirSync(join(out, "packs")).map((f) => `packs/${f}`),
 ];
-console.log(JSON.stringify({ page: join(out, "cage-coach.html"), root: out, files }, null, 2));
+console.log(JSON.stringify({ page: join(out, "nonet.html"), root: out, files }, null, 2));

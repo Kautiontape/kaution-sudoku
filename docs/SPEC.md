@@ -1,4 +1,4 @@
-# Cage Coach — Product Spec
+# Nonet — Product Spec
 
 Puzzles that teach instead of tell. Three puzzle types, one coach: hints climb a ladder from
 "look here" to "here's the answer", every hint is a human-style deduction with its reasoning drawn

@@ -1,6 +1,6 @@
 {
-  "name": "Cage Coach",
-  "short_name": "Cage Coach",
+  "name": "Nonet",
+  "short_name": "Nonet",
   "description": "Sudoku, Killer Sudoku and Queens with a coach that teaches every technique.",
   "start_url": "./",
   "scope": "./",

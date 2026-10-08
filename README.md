@@ -1,4 +1,4 @@
-# Cage Coach
+# Nonet
 
 Sudoku, Killer Sudoku and Queens — with a coach that teaches every technique, wrapped in a
 Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, built for phones.
@@ -65,7 +65,7 @@ Queens puzzles grow colour regions around a valid queen placement and repair unt
 
 ## Deploying
 
-Live at [cagecoach.kautiontape.com](https://cagecoach.kautiontape.com). Push to `main`: a
+Live at [nonet.kautiontape.com](https://nonet.kautiontape.com). Push to `main`: a
 self-hosted GitHub Actions runner on **ktn** pulls into `/opt/services/kaution-sudoku`, runs
 `npm ci && npm run build`, and the host nginx serves `dist/` (`.github/workflows/deploy.yml`).
 Pull requests run `npm run check` on GitHub's runners (`.github/workflows/ci.yml`).

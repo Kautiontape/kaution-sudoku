@@ -1,4 +1,4 @@
-/* Cage Coach — deep-space glass, neon digits, light that reacts to play. Dark by design. */
+/* Nonet — deep-space glass, neon digits, light that reacts to play. Dark by design. */
 
 :root {
   --a1: #7cf3ff;
@@ -211,11 +211,6 @@ button:disabled {
   color: transparent;
   filter: drop-shadow(0 0 18px rgba(124, 243, 255, 0.35));
   animation: shimmer 9s ease-in-out infinite alternate;
-}
-
-.wordmark span:last-child {
-  padding-left: 0.42em;
-  animation-delay: -4s;
 }
 
 @keyframes shimmer {
