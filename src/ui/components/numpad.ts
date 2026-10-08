@@ -21,7 +21,14 @@ export class Numpad {
     this.el = h("div", { class: "numpad", role: "group", "aria-label": "Digits" });
     for (let d = 1; d <= 9; d++) {
       const count = h("small", null, "");
-      const key = h("button", { class: "num", type: "button", "aria-label": `Digit ${d}`, "data-digit": String(d), style: { "--dc": DIGIT_COLORS[d]! } }, h("span", null, String(d)), count);
+      // In notes mode the digit moves to where that note sits inside a cell (1 top-left … 9 bottom-right).
+      const pos = `${Math.floor((d - 1) / 3) + 1} / ${((d - 1) % 3) + 1}`;
+      const key = h(
+        "button",
+        { class: "num", type: "button", "aria-label": `Digit ${d}`, "data-digit": String(d), style: { "--dc": DIGIT_COLORS[d]!, "--pos": pos } },
+        h("span", null, String(d)),
+        count,
+      );
       let timer = 0;
       let long = false;
       key.addEventListener("pointerdown", (e) => {

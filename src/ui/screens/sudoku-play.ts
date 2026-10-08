@@ -214,6 +214,8 @@ class SudokuPlay implements Screen {
     this.tools.undo!.disabled = !g.canUndo();
     this.tools.notes!.classList.toggle("on", this.notesMode);
     this.tools.notes!.setAttribute("aria-pressed", String(this.notesMode));
+    this.tools.notes!.querySelector("span")!.textContent = this.notesMode ? "Notes on" : "Notes";
+    this.el.classList.toggle("notes-mode", this.notesMode);
     const p = this.progress();
     this.progressEl.style.width = `${(p * 100).toFixed(1)}%`;
     this.timerEl.textContent = st.showTimer ? formatTime(g.elapsedMs) : "";
@@ -223,7 +225,7 @@ class SudokuPlay implements Screen {
       this.multi.length > 1
         ? h("span", { class: "notes-flag" }, `${this.multi.length} cells · digits pencil into all`)
         : this.notesMode
-          ? h("span", { class: "notes-flag" }, "Notes on")
+          ? h("span", { class: "notes-flag" }, "✎ Pencil mode")
           : h("span", { class: "dim" }, `${Math.round(p * 100)}%`),
     );
     this.renderCageBar();
@@ -351,7 +353,9 @@ class SudokuPlay implements Screen {
 
   private toggleNotes(): void {
     this.notesMode = !this.notesMode;
-    sound.ui("toggle");
+    if (this.notesMode) sound.note(5, true);
+    else sound.ui("toggle");
+    buzz("note");
     this.render();
   }
 
@@ -376,7 +380,10 @@ class SudokuPlay implements Screen {
       return;
     }
     if (/^[1-9]$/.test(k)) return this.onDigit(Number(k), e.shiftKey || e.altKey);
-    if (k === "Backspace" || k === "Delete" || k === "0") return this.erase();
+    if (k === "Backspace" || k === "Delete" || k === "0") {
+      e.preventDefault();
+      return this.erase();
+    }
     if (k === "n" || k === "N") return this.toggleNotes();
     if (k === "h" || k === "H") return this.sheet.isOpen ? this.sheet.advance() : this.openHint();
     if (k === "Escape" && this.sheet.isOpen) return this.closeHint();

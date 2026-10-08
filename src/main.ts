@@ -33,6 +33,20 @@ app.register({
 });
 app.onError = (message) => toast(message, "bad");
 
+// Backspace erases in the game; it must never navigate the browser back. Capture phase, so it
+// runs before any screen handler and regardless of which element has focus.
+const TEXT_INPUT = /^(text|search|email|number|password|tel|url)$/;
+window.addEventListener(
+  "keydown",
+  (e: KeyboardEvent) => {
+    if (e.key !== "Backspace") return;
+    const t = e.target as HTMLElement | null;
+    const typing = t?.isContentEditable || t?.tagName === "TEXTAREA" || (t instanceof HTMLInputElement && TEXT_INPUT.test(t.type));
+    if (!typing) e.preventDefault();
+  },
+  { capture: true },
+);
+
 // Browsers only allow audio after a gesture: unlock on the first touch anywhere.
 addEventListener("pointerdown", () => sound.unlock(), { capture: true, once: true });
 

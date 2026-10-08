@@ -34,8 +34,11 @@ test("classic: notes mode pencils candidates; long-press does too", async ({ pag
   const empty = (await readBoard(page)).find((x) => !x.value)!;
   await cellLocator(page, empty.cell).click();
   await page.getByTestId("tool-notes").click();
+  await expect(page.locator(".play.notes-mode")).toHaveCount(1);
+  await expect(page.getByTestId("tool-notes")).toContainText("Notes on");
   await digitKey(page, 3).click();
   await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(1);
+  await page.screenshot({ path: "test-results/screens/notes-mode.png" });
   await page.getByTestId("tool-notes").click();
   await digitKey(page, 5).click({ delay: 600 }); // long press
   await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(2);
@@ -60,6 +63,22 @@ test("classic: dragging across empty cells pencils a digit into all of them", as
     if (!(await cellLocator(page, x.cell).evaluate((el) => el.classList.contains("msel")))) continue;
     await expect(cellLocator(page, x.cell).locator(".notes i.on")).toHaveText("7");
   }
+});
+
+test("Backspace erases in the game and never navigates the browser back", async ({ page }) => {
+  const backspaceCancelled = () =>
+    page.evaluate(() => !document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true, cancelable: true })));
+  await page.goto("/");
+  expect(await backspaceCancelled()).toBe(true);
+  await page.goto("/?play=classic-easy");
+  const empty = (await readBoard(page)).find((x) => !x.value)!;
+  await cellLocator(page, empty.cell).click();
+  await page.keyboard.press("5");
+  await expect(cellLocator(page, empty.cell).locator(".v")).toHaveText("5");
+  await page.keyboard.press("Backspace");
+  await expect(cellLocator(page, empty.cell).locator(".v")).toHaveText("");
+  expect(await backspaceCancelled()).toBe(true);
+  expect(page.url()).toContain("play=classic-easy");
 });
 
 test("hint ladder climbs where → what → why and applies a step", async ({ page }) => {

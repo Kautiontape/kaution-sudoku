@@ -701,13 +701,62 @@ button:disabled {
   opacity: 0.28;
 }
 
+/* Notes (pencil) mode: the keys become little 3×3 note grids, each digit in its own corner. */
 .numpad.notes-mode .num {
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 7px 4px;
   border-style: dashed;
+  border-color: color-mix(in srgb, var(--a2) 50%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--a2) 12%, rgba(10, 14, 34, 0.75)), rgba(10, 14, 34, 0.75));
 }
 
 .numpad.notes-mode .num span {
-  font-size: 19px;
-  transform: translate(-7px, -10px);
+  grid-area: var(--pos);
+  font-size: 16px;
+  font-weight: 700;
+  transform: none;
+  animation: note-pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.numpad.notes-mode .num small {
+  display: none;
+}
+
+@keyframes note-pop {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+/* The board and selection shift to the secondary accent with a dashed, pencilled outline. */
+.play.notes-mode .board {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--a2) 60%, transparent), 0 0 34px -6px color-mix(in srgb, var(--a2) 55%, transparent), 0 24px 70px -24px rgba(0, 0, 0, 0.9);
+}
+
+.play.notes-mode .cell.sel {
+  background: radial-gradient(circle, color-mix(in srgb, var(--a2) 26%, transparent), color-mix(in srgb, var(--a2) 9%, transparent));
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--a2) 45%, transparent);
+  outline: 2px dashed color-mix(in srgb, var(--a2) 85%, white);
+  outline-offset: -3px;
+  animation: none;
+}
+
+.play.notes-mode .cell.sel .notes {
+  color: #fff;
+}
+
+.play.notes-mode .tool.on {
+  color: var(--a2);
+}
+
+.play.notes-mode .tool.on .icon {
+  filter: drop-shadow(0 0 6px var(--a2));
+}
+
+.play.notes-mode .stats .notes-flag {
+  color: var(--a2);
 }
 
 /* ---------------------------------------------------------------- board */
