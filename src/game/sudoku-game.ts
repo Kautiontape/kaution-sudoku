@@ -225,6 +225,26 @@ export class SudokuGame {
     this.emit({ type: "note", cell, digit, on: (after & bit(digit)) !== 0 });
   }
 
+  /**
+   * Pencil a digit into several cells at once (one undo step): if every empty cell already has it,
+   * remove it from all of them; otherwise add it everywhere it's missing.
+   */
+  toggleNoteMany(cells: readonly CellId[], digit: Digit): void {
+    if (this.solved) return;
+    const empty = cells.filter((c) => !this.grid[c]);
+    if (!empty.length) return;
+    const b = bit(digit);
+    const remove = empty.every((c) => this.notes[c]! & b);
+    const changes: Change[] = empty.map((c) => ({
+      cell: c,
+      digit: [0, 0],
+      notes: [this.notes[c]!, remove ? this.notes[c]! & ~b : this.notes[c]! | b],
+    }));
+    this.commit("notes", changes);
+    this.emit({ type: "notes", cells: empty });
+    this.emit({ type: "note", cell: empty[0]!, digit, on: !remove });
+  }
+
   /** Candidates as a player would pencil them: sudoku rules (plus cage sums in killer). */
   candidatesNow(): Uint16Array {
     return this.kind === "killer" ? comboCandidates(this.puzzle, this.grid) : basicCandidates(this.puzzle, this.grid);

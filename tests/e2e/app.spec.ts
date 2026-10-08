@@ -40,6 +40,27 @@ test("classic: notes mode pencils candidates; long-press does too", async ({ pag
   await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(2);
 });
 
+test("classic: dragging across empty cells pencils a digit into all of them", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const board = await readBoard(page);
+  const row = board.filter((x) => x.r === 4);
+  const run = row.filter((x) => !x.value).slice(0, 3);
+  test.skip(run.length < 2, "row 5 has fewer than two empty cells");
+  const box = async (c: number) => (await cellLocator(page, c).boundingBox())!;
+  const a = await box(run[0]!.cell);
+  const b = await box(run[run.length - 1]!.cell);
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.locator(".cell.msel")).not.toHaveCount(0);
+  await digitKey(page, 7).click();
+  for (const x of run) {
+    if (!(await cellLocator(page, x.cell).evaluate((el) => el.classList.contains("msel")))) continue;
+    await expect(cellLocator(page, x.cell).locator(".notes i.on")).toHaveText("7");
+  }
+});
+
 test("hint ladder climbs where → what → why and applies a step", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   await page.getByTestId("tool-hint").click();

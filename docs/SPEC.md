@@ -33,7 +33,9 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
 ## 2. Core play
 
 - Sudoku: tap cell → tap digit. Notes mode toggle; **long-press a digit = pencil without toggling**.
-  Erase, undo/redo (unlimited), auto-notes (killer auto-notes respect cage sums).
+  Erase, undo/redo (unlimited), auto-notes (killer auto-notes respect cage sums). Drag across
+  cells to select several; a digit tap then pencils it into all of them (or removes it if all
+  have it) as one undo step.
 - Placing a digit auto-removes it from notes in the same row/col/box/**cage** (setting).
 - Highlights: selected cell, its peers, its cage, every cell with the same digit, matching notes.
 - Digit pad shows how many of each digit remain; finished digits dim.

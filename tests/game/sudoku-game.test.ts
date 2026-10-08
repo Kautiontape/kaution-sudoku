@@ -105,6 +105,20 @@ describe("SudokuGame", () => {
     expect(g.solved).toBe(true); // all singles: fine too
   });
 
+  it("bulk-pencils a digit across cells as one undo step, toggling off when all have it", () => {
+    const g = new SudokuGame(WIKI);
+    const cells = [cell("r1c3"), cell("r1c4"), cell("r1c1")]; // r1c1 is a given: skipped
+    g.toggleNote(cell("r1c3"), 2);
+    g.toggleNoteMany(cells, 2);
+    expect(g.notes[cell("r1c3")]).toBe(maskOf([2]));
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([2]));
+    g.toggleNoteMany(cells, 2); // all have it → remove everywhere
+    expect(g.notes[cell("r1c3")]).toBe(0);
+    expect(g.notes[cell("r1c4")]).toBe(0);
+    g.undo();
+    expect(g.notes[cell("r1c4")]).toBe(maskOf([2]));
+  });
+
   it("serializes and restores progress", () => {
     const g = new SudokuGame(WIKI);
     g.place(cell("r1c3"), 4);

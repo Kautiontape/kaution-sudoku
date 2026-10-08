@@ -20,6 +20,8 @@ export interface BoardView {
   selected: CellId | null;
   /** Digit to highlight across the board (0 = none). */
   highlightDigit: number;
+  /** Extra cells selected by dragging (bulk notes). */
+  multi?: readonly CellId[];
   showWrong: boolean;
   cageTint: boolean;
 }
@@ -48,6 +50,7 @@ export class SudokuBoard {
   constructor(
     private puzzle: Puzzle,
     onSelect: (cell: CellId, e: PointerEvent) => void,
+    onDragSelect?: (cells: CellId[]) => void,
   ) {
     const killer = puzzle.cages.length > 0;
     this.board = h("div", { class: `board${killer ? " killer" : ""}`, role: "grid", "aria-label": "Sudoku board", "data-testid": "board" });
@@ -73,7 +76,6 @@ export class SudokuBoard {
         val,
         notes,
       );
-      cell.addEventListener("pointerdown", (e) => onSelect(c, e));
       this.cellEls.push(cell);
       this.valEls.push(val);
       this.noteWrap.push(notes);
@@ -123,6 +125,35 @@ export class SudokuBoard {
       });
     }
     this.el = h("div", { class: "board-wrap" }, this.board, this.svg, sums);
+    this.attachInput(onSelect, onDragSelect);
+  }
+
+  /** Tap selects a cell; dragging across cells selects them all (for bulk notes). */
+  private attachInput(onSelect: (cell: CellId, e: PointerEvent) => void, onDragSelect?: (cells: CellId[]) => void): void {
+    let dragging: CellId[] | null = null;
+    const cellAt = (x: number, y: number): CellId | null => {
+      const el = document.elementFromPoint(x, y)?.closest<HTMLElement>(".cell");
+      return el && this.board.contains(el) ? Number(el.dataset.cell) : null;
+    };
+    this.board.addEventListener("pointerdown", (e) => {
+      const c = cellAt(e.clientX, e.clientY);
+      if (c === null) return;
+      if (onDragSelect) {
+        this.board.setPointerCapture?.(e.pointerId);
+        dragging = [c];
+      }
+      onSelect(c, e);
+    });
+    this.board.addEventListener("pointermove", (e) => {
+      if (!dragging || !onDragSelect) return;
+      const c = cellAt(e.clientX, e.clientY);
+      if (c === null || dragging.includes(c)) return;
+      dragging.push(c);
+      onDragSelect([...dragging]);
+    });
+    const end = () => (dragging = null);
+    this.board.addEventListener("pointerup", end);
+    this.board.addEventListener("pointercancel", end);
   }
 
   cell(c: CellId): HTMLElement {
@@ -157,6 +188,7 @@ export class SudokuBoard {
       cls.toggle("filled", d !== 0);
       cls.toggle("wrong", wrong);
       cls.toggle("sel", c === sel);
+      cls.toggle("msel", !!v.multi && v.multi.length > 1 && v.multi.includes(c));
       cls.toggle("peer", sel !== null && c !== sel && CELL_HOUSES[c]!.some((x) => selHouses!.includes(x)));
       cls.toggle("cage-peer", selCage >= 0 && c !== sel && this.cageOfCell[c] === selCage);
       cls.toggle("same", hd !== 0 && d === hd);

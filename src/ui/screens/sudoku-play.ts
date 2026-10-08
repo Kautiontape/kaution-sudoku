@@ -61,6 +61,8 @@ class SudokuPlay implements Screen {
   private sheet: HintSheet;
   private hint: SudokuHint | null = null;
   private selected: CellId | null = null;
+  /** Cells selected by dragging; digit taps pencil into all of them. */
+  private multi: CellId[] = [];
   private activeDigit = 0;
   private notesMode = false;
   private timerEl: HTMLElement;
@@ -86,7 +88,11 @@ class SudokuPlay implements Screen {
   ) {
     this.game = new SudokuGame(puzzle, saved);
     this.applyGameSettings();
-    this.board = new SudokuBoard(puzzle, (c, e) => this.onCell(c, e));
+    this.board = new SudokuBoard(
+      puzzle,
+      (c, e) => this.onCell(c, e),
+      (cells) => this.onDragSelect(cells),
+    );
     this.numpad = new Numpad({ onDigit: (d) => this.onDigit(d), onNote: (d) => this.onDigit(d, true) });
     this.sheet = new HintSheet({
       onRung: (r) => this.onRung(r),
@@ -198,6 +204,7 @@ class SudokuPlay implements Screen {
       given: g.given,
       solution: g.solution,
       selected: this.selected,
+      multi: this.multi,
       highlightDigit: st.highlightSame ? selDigit || this.activeDigit : 0,
       showWrong: st.checkMistakes,
       cageTint: st.cageTint,
@@ -213,7 +220,11 @@ class SudokuPlay implements Screen {
     this.statsEl.replaceChildren(
       h("span", { class: g.mistakes ? "bad" : "" }, `Mistakes ${g.mistakes}`),
       h("span", null, `Hints ${g.hintsUsed}`),
-      this.notesMode ? h("span", { class: "notes-flag" }, "Notes on") : h("span", { class: "dim" }, `${Math.round(p * 100)}%`),
+      this.multi.length > 1
+        ? h("span", { class: "notes-flag" }, `${this.multi.length} cells · digits pencil into all`)
+        : this.notesMode
+          ? h("span", { class: "notes-flag" }, "Notes on")
+          : h("span", { class: "dim" }, `${Math.round(p * 100)}%`),
     );
     this.renderCageBar();
     this.app.bg.setIntensity(0.15 + p * 0.85);
@@ -288,9 +299,17 @@ class SudokuPlay implements Screen {
   // ------------------------------------------------------------------------------------------
   // Input
 
+  private onDragSelect(cells: CellId[]): void {
+    this.multi = cells;
+    this.selected = cells[cells.length - 1]!;
+    sound.ui("select");
+    this.render();
+  }
+
   private onCell(c: CellId, e: PointerEvent): void {
     e.preventDefault();
     sound.unlock();
+    this.multi = [];
     if (this.selected === c && this.activeDigit && !this.game.given[c] && !this.game.grid[c]) {
       this.onDigit(this.activeDigit);
       return;
@@ -310,6 +329,12 @@ class SudokuPlay implements Screen {
       return;
     }
     if (this.sheet.isOpen) this.closeHint();
+    if (this.multi.length > 1) {
+      this.game.toggleNoteMany(this.multi, d);
+      this.activeDigit = d;
+      this.render();
+      return;
+    }
     if (asNote || this.notesMode) {
       if (this.game.grid[c]) return;
       this.game.toggleNote(c, d);

@@ -16,8 +16,8 @@ logical-proof uniqueness and cage-splitting repair, Queens generator; parallel p
 
 ## M3 — Playable boards ✅
 Sudoku (classic + killer) and Queens boards, notes, long-press pencil, undo/redo, auto-clear notes
-(incl. cage peers), "why it's wrong" messages, autosave/resume, keyboard. *Deferred: drag
-multi-select for bulk notes on the sudoku board.*
+(incl. cage peers), "why it's wrong" messages, autosave/resume, keyboard, drag across cells to
+pencil a digit into all of them.
 
 ## M4 — Calculator ⏳ (Region mode done)
 The killer cage bar shows the selected cage's combinations, and its **Σ45 lens** is Region mode:
