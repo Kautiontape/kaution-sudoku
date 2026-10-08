@@ -220,12 +220,15 @@ export class Fx {
     if (this.running || document.hidden) return;
     this.running = true;
     this.last = performance.now();
+    let frame = 0;
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
       this.step(dt);
-      this.draw();
-      const idle = !this.particles.length && !this.rings.length && !this.beams.length && !this.motes.length;
+      // Only slow motes moving: half frame rate is indistinguishable and saves battery.
+      const ambientOnly = !this.particles.length && !this.rings.length && !this.beams.length;
+      if (!ambientOnly || ++frame % 2 === 0) this.draw();
+      const idle = ambientOnly && !this.motes.length;
       if (idle || document.hidden) {
         this.running = false;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

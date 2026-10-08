@@ -543,11 +543,13 @@ button:disabled {
 
 .tool {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-width: 58px;
+  min-width: 0;
+  white-space: nowrap;
   height: 56px;
   border: none;
   border-radius: 14px;
