@@ -13,6 +13,9 @@ export function list(items: readonly string[], conj = "and"): string {
 
 export const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many);
 
+/** "a 5", but "an 8". */
+export const aDigit = (d: number): string => (d === 8 || d === 11 || d === 18 ? `an ${d}` : `a ${d}`);
+
 export const cellList = (cells: readonly CellId[], conj = "and"): string => list(cells.map(cellName), conj);
 
 export const digitList = (ds: readonly Digit[], conj = "and"): string => list(ds.map(String), conj);
@@ -54,15 +57,19 @@ export function cageName(p: Puzzle, id: number): string {
   return `the ${cage.sum} cage at ${cellName(cageAnchor(cage))}`;
 }
 
-/** Group eliminations by digit: "3 from r1c4 and r1c5; 7 from r2c2". */
+/**
+ * Eliminations grouped so cells losing the same digits share a clause:
+ * "6 from r1c6 and r4c4", "3 and 8 from r1c9", "3 from r1c4; 3 and 7 from r2c2".
+ */
 export function elimText(elims: readonly Elimination[]): string {
-  const byDigit = new Map<Digit, CellId[]>();
-  for (const e of elims) byDigit.set(e.digit, [...(byDigit.get(e.digit) ?? []), e.cell]);
-  const parts = [...byDigit.entries()].sort((a, b) => a[0] - b[0]).map(([d, cs]) => `${d} from ${cellList(cs)}`);
-  return parts.join("; ");
+  const byCell = new Map<CellId, number>();
+  for (const e of elims) byCell.set(e.cell, (byCell.get(e.cell) ?? 0) | (1 << e.digit));
+  const groups = new Map<number, CellId[]>();
+  for (const [cell, mask] of [...byCell.entries()].sort((a, b) => a[0] - b[0])) groups.set(mask, [...(groups.get(mask) ?? []), cell]);
+  return [...groups.entries()].map(([mask, cells]) => `${maskList(mask)} from ${cellList(cells)}`).join("; ");
 }
 
-/** Group eliminations by cell when they all hit the same digit set: "r1c4 and r1c5 lose 3 and 7". */
+/** The "do" line for an elimination step: "Remove 3 and 8 from r1c9." */
 export function removeSentence(elims: readonly Elimination[]): string {
   return `Remove ${elimText(elims)}.`;
 }

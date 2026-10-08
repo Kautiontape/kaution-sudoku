@@ -7,6 +7,7 @@ import { cellName, houseName } from "../geometry";
 import type { LadderText } from "../hint-types";
 import type { CellId, Digit, Elimination, House, Puzzle, Step } from "../types";
 import {
+  aDigit,
   cageName,
   cap,
   cellList,
@@ -90,7 +91,7 @@ function blockedSentences(blocked: readonly Blocked[], d: Digit, p: Puzzle): str
 const hiddenSingle: Template = (step, { puzzle }) => {
   const e = step.explain as unknown as HiddenSingleX;
   const h = houseName(e.house);
-  const why = [`Every ${e.house.kind === "box" ? "box" : e.house.kind === "row" ? "row" : "column"} needs a ${e.digit}. In ${h}, ${cellName(e.cell)} is the only cell that can still take it.`];
+  const why = [`Every ${e.house.kind === "box" ? "box" : e.house.kind === "row" ? "row" : "column"} needs ${aDigit(e.digit)}. In ${h}, ${cellName(e.cell)} is the only cell that can still take it.`];
   if (e.blocked.length) why.push(`The other empty cells are blocked: ${blockedSentences(e.blocked, e.digit, puzzle).join(" ")}`);
   return {
     where: `Look at ${h}.`,
@@ -170,7 +171,7 @@ const claiming: Template = (step) => {
     what: `In ${line}, one digit is stuck inside a single box.`,
     why: [
       `In ${line}, ${e.digit} can only go in ${cellList(e.cells)} — all of them inside ${box}.`,
-      `${cap(line)} needs a ${e.digit}, so ${box}'s ${e.digit} has to be one of those cells.`,
+      `${cap(line)} needs ${aDigit(e.digit)}, so ${box}'s ${e.digit} has to be one of those cells.`,
       `That means the rest of ${box} can't be ${e.digit}.`,
     ],
     do: removeSentence(step.eliminations),
@@ -335,8 +336,8 @@ const cageLocked: Template = (step, { puzzle }) => {
   const h = houseName(e.house);
   const why = [
     e.valid.length === 1
-      ? `${cap(name)} can only be ${comboText(e.valid[0]!)}, so it must contain a ${e.digit}.`
-      : `Every way to make ${name} uses a ${e.digit}: ${comboList(e.valid, "or")}.`,
+      ? `${cap(name)} can only be ${comboText(e.valid[0]!)}, so it must contain ${aDigit(e.digit)}.`
+      : `Every way to make ${name} uses ${aDigit(e.digit)}: ${comboList(e.valid, "or")}.`,
   ];
   why.push(
     e.cells.length === 1
@@ -366,9 +367,9 @@ const cageClaim: Template = (step, { puzzle }) => {
   const h = houseName(e.house);
   const why = [
     `In ${h}, ${e.digit} can only go in ${cellList(e.cells)} — all inside ${name}.`,
-    `${cap(h)} needs a ${e.digit}, so that cage must contain it.`,
+    `${cap(h)} needs ${aDigit(e.digit)}, so that cage must contain it.`,
   ];
-  if (e.dropped.length) why.push(`That rules out the cage's combinations without a ${e.digit} (${comboList(e.dropped)}), leaving ${comboList(e.valid, "or")}.`);
+  if (e.dropped.length) why.push(`That rules out the cage's combinations without ${aDigit(e.digit)} (${comboList(e.dropped)}), leaving ${comboList(e.valid, "or")}.`);
   why.push(`And since a cage never repeats a digit, its cells outside ${h} can't be ${e.digit} either.`);
   return {
     where: `Look at ${h}.`,

@@ -21,7 +21,8 @@ test("classic: placing, a teaching mistake, and undo", async ({ page }) => {
   const clash = board.find((y) => y.r === target!.r && y.value)!;
   await cellLocator(page, target!.cell).click();
   await digitKey(page, Number(clash.value)).click();
-  await expect(page.getByTestId("toast")).toContainText(`Row ${target!.r + 1} already has a ${clash.value}.`);
+  const article = clash.value === "8" ? "an" : "a";
+  await expect(page.getByTestId("toast")).toContainText(`Row ${target!.r + 1} already has ${article} ${clash.value}.`);
   await expect(cellLocator(page, target!.cell)).toHaveClass(/wrong/);
   await expect(page.locator(".stats")).toContainText("Mistakes 1");
   await page.getByTestId("tool-undo").click();

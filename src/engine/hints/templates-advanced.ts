@@ -7,7 +7,7 @@
 import { cellName, houseName } from "../geometry";
 import type { CellId, Digit, Elimination, House, Puzzle, Step } from "../types";
 import { chainSentences, isText, type ChainLinkX, type ChainNode } from "./chain-text";
-import { cap, cellList, digitList, list, plural, regionName, relation, removeSentence } from "./format";
+import { aDigit, cap, cellList, digitList, list, plural, regionName, relation, removeSentence } from "./format";
 import { elimCells, type Template } from "./templates";
 
 const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -75,7 +75,7 @@ const fish: Template = (step) => {
     );
   } else {
     why.push(
-      `Each of these ${word(e.size)} ${baseWord}s needs a ${e.digit}, and no two of them can put it in the same ${coverWord}.`,
+      `Each of these ${word(e.size)} ${baseWord}s needs ${aDigit(e.digit)}, and no two of them can put it in the same ${coverWord}.`,
       `So ${bases} use up the ${e.digit}s of all ${word(e.size)} ${coverWord}s: ${covers}.`,
     );
   }
