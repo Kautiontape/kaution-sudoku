@@ -7,7 +7,7 @@ import { ICONS } from "../icons";
 import { DIFFICULTY_LABEL } from "../messages";
 import { THEMES } from "../palette";
 import { sound } from "../sound";
-import { loadProgress } from "../store";
+import { load, loadProgress } from "../store";
 import { openLearn } from "./learn";
 import { openSettings } from "./settings-sheet";
 
@@ -117,7 +117,8 @@ export function createHome(app: App): Screen {
     ),
   );
   // Open the most recently played mode's card so "Continue" is one tap away.
-  const recent = MODES.find((m) => loadSaved(m.mode));
+  const last = load<string | null>("lastMode", null);
+  const recent = MODES.find((m) => m.mode === last) ?? MODES.find((m) => loadSaved(m.mode));
   if (recent) {
     open = recent.mode;
     cards.get(recent.mode)!.classList.add("open");

@@ -84,3 +84,11 @@ export function recordHint(technique: string): void {
   p.hinted[technique] = (p.hinted[technique] ?? 0) + 1;
   saveProgress(p);
 }
+
+/** Show a one-time tip: returns true the first time a key is seen. */
+export function firstTime(key: string): boolean {
+  const seen = load<string[]>("seen", []);
+  if (seen.includes(key)) return false;
+  save("seen", [...seen, key]);
+  return true;
+}

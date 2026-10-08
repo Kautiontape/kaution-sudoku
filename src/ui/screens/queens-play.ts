@@ -18,7 +18,7 @@ import { DIFFICULTY_LABEL } from "../messages";
 import { REGION_COLORS } from "../palette";
 import { onSettings, settings, updateSettings } from "../settings";
 import { sound } from "../sound";
-import { loadProgress, recordHint, recordSolve } from "../store";
+import { firstTime, loadProgress, recordHint, recordSolve } from "../store";
 import { openLearn } from "./learn";
 import { openSettings } from "./settings-sheet";
 import { showWin } from "./win";
@@ -134,6 +134,8 @@ class QueensPlay implements Screen {
     this.render();
     this.save();
     sound.startMusic();
+    if (firstTime("tip-queens"))
+      setTimeout(() => toast("One queen per row, column and colour, and queens never touch, not even diagonally.", "info", 6500, true), 900);
   }
 
   destroy(): void {

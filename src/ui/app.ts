@@ -92,6 +92,7 @@ export class App {
     try {
       const s = await this.factories.play!(this, mode, difficulty, resume, avoid);
       this.mount(s, MODE_THEME[mode]);
+      save("lastMode", mode);
     } catch (err) {
       console.error(err);
       await this.home();

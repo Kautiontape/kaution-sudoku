@@ -27,7 +27,7 @@ import { DIFFICULTY_LABEL, MODE_LABEL, mistakeText } from "../messages";
 import { DIGIT_COLORS, MARK_COLORS } from "../palette";
 import { onSettings, settings } from "../settings";
 import { sound } from "../sound";
-import { loadProgress, recordHint, recordSolve } from "../store";
+import { firstTime, loadProgress, recordHint, recordSolve } from "../store";
 import { openLearn } from "./learn";
 import { openSettings } from "./settings-sheet";
 import { showWin } from "./win";
@@ -155,6 +155,19 @@ class SudokuPlay implements Screen {
     this.save();
     sound.startMusic();
     requestAnimationFrame(() => this.introSweep());
+    if (firstTime(`tip-${mode}`))
+      setTimeout(
+        () =>
+          toast(
+            mode === "killer"
+              ? "Each dashed cage adds up to its number. Stuck? Tap Hint: every tap reveals a little more, and Σ45 works out a house for you."
+              : "Stuck? Tap Hint: first it says where to look, then the technique, then why it works.",
+            "info",
+            6500,
+            true,
+          ),
+        900,
+      );
   }
 
   destroy(): void {
