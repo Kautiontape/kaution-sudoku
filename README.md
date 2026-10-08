@@ -24,7 +24,7 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
   Select cells across several cages and it adds those cages up: "54 = 11 + 12 + 12 + 19".
 - **Comfortable input.** Hold a digit to light it up across the grid; drag (or Shift / Ctrl-click)
   to select several cells, then pencil a digit into all of them or erase them all at once;
-  auto-notes; unlimited undo. On desktop: Shift+digit pencils, Space toggles notes, Shift+arrow
+  auto-notes; unlimited undo. On desktop: hold Shift for notes mode, Space toggles notes, Shift+arrow
   or Shift/Ctrl-click selects several, H / Enter climb the hint, Esc steps back, Ctrl+Z / Y. In Queens: tap for ✕ (tap again to
   take it off), double-tap for a queen, hold to clear, drag to ✕ many.
 - **Levels that keep coming.** Finish one and the next drops in on its own — with one of eight

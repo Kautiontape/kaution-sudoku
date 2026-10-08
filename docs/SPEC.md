@@ -61,7 +61,8 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
   saves read the real board. **Wipe** (or switching the tool off) restores the snapshot exactly;
   **Keep** makes the scratch real as one undo step, checked like any other move.
 - Keyboard (sudoku / killer): 1–9 place, Shift+digit pencils (read from the physical key, so it
-  works on any layout); Space or N toggles Notes; arrows move (wrapping), Shift+arrow — like
+  works on any layout); while Shift is held the screen shows notes mode and a numpad tap pencils
+  too; Space or N toggles Notes; arrows move (wrapping), Shift+arrow — like
   Shift / Ctrl / ⌘-click — adds cells to the selection; Backspace / Delete / 0 erase the
   selection; H opens the hint or shows the next rung, Enter does what the sheet's main button
   does (next rung, or apply); L cycles the Σ45 lens (killer); Esc steps back one layer (game menu

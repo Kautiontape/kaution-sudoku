@@ -49,6 +49,28 @@ test("classic: notes mode pencils candidates; holding a digit lights it up and p
   await expect(cellLocator(page, empty.cell).locator(".notes i.on")).toHaveCount(1);
 });
 
+test("classic: holding Shift turns notes mode on until it's let go", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const empty = (await readBoard(page)).find((x) => !x.value)!;
+  const cell = cellLocator(page, empty.cell);
+  await cell.click();
+  await page.keyboard.down("Shift");
+  await expect(page.locator(".play.notes-mode")).toHaveCount(1);
+  await expect(page.locator(".numpad.notes-mode")).toHaveCount(1);
+  await expect(page.getByTestId("tool-notes")).toHaveAttribute("aria-pressed", "false");
+  await digitKey(page, 3).click(); // the pad, with Shift held: a note, as it looks
+  await expect(cell.locator(".notes i.on")).toHaveText("3");
+  await expect(cell.locator(".v")).toHaveText("");
+  await page.keyboard.up("Shift");
+  await expect(page.locator(".play.notes-mode")).toHaveCount(0);
+  await expect(page.locator(".numpad.notes-mode")).toHaveCount(0);
+  // With the toggle on, letting go of Shift leaves notes mode on.
+  await page.getByTestId("tool-notes").click();
+  await page.keyboard.down("Shift");
+  await page.keyboard.up("Shift");
+  await expect(page.locator(".play.notes-mode")).toHaveCount(1);
+});
+
 test("classic: dragging across empty cells pencils a digit into all of them", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   const board = await readBoard(page);

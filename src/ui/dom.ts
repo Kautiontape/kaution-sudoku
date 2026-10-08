@@ -47,6 +47,11 @@ export function clear(el: Element): void {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
 
+/** Shift on its own: with Ctrl / ⌘ / Alt too, it's a browser combination, not notes. */
+export function shiftOnly(e: KeyboardEvent | MouseEvent): boolean {
+  return e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
+}
+
 /** Parse a trusted inline SVG string (our own icon set) into an element. */
 export function svgIcon(markup: string, cls = "icon"): SVGSVGElement {
   const tpl = document.createElement("template");

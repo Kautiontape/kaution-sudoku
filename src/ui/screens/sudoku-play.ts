@@ -22,7 +22,7 @@ import { Numpad } from "../components/numpad";
 import { SudokuBoard } from "../components/sudoku-board";
 import { showResult } from "../components/result-banner";
 import { clearToast, toast } from "../components/toast";
-import { flip, formatTime, h, svgIcon } from "../dom";
+import { flip, formatTime, h, shiftOnly, svgIcon } from "../dom";
 import { callout } from "../fx/callout";
 import { levelOf } from "../fx/level-order";
 import { enterLevel, leaveLevel } from "../fx/levels";
@@ -74,6 +74,8 @@ class SudokuPlay implements Screen {
   /** Whether the cell being pressed was already the selection (a tap on it repeats the last digit). */
   private pressWasSelected = false;
   private notesMode = false;
+  /** Shift held on its own: notes mode for as long as it's down, without touching the toggle. */
+  private shiftHeld = false;
   private timerEl: HTMLElement;
   private progressEl: HTMLElement;
   private statsEl: HTMLElement;
@@ -106,7 +108,13 @@ class SudokuPlay implements Screen {
       (cells) => this.onDragSelect(cells),
       (c) => this.onCellTap(c),
     );
-    this.numpad = new Numpad({ onDigit: (d) => this.onDigit(d), onHold: (d) => this.peek(d) });
+    this.numpad = new Numpad({
+      onDigit: (d, asNote) => {
+        this.holdShift(asNote); // the look follows the press, even if no key event said Shift
+        this.onDigit(d, asNote);
+      },
+      onHold: (d) => this.peek(d),
+    });
     this.sheet = new HintSheet({
       onRung: (r) => this.onRung(r),
       onApply: () => this.applyHint(),
@@ -168,7 +176,22 @@ class SudokuPlay implements Screen {
     const onKey = (e: KeyboardEvent) => this.onKey(e);
     addEventListener("keydown", onKey);
     this.offs.push(() => removeEventListener("keydown", onKey));
-    const onVis = () => this.save();
+    // Every key event carries the modifiers, so either Shift key, in any order, is tracked.
+    const onShift = (e: KeyboardEvent) => this.holdShift(shiftOnly(e));
+    addEventListener("keydown", onShift);
+    addEventListener("keyup", onShift);
+    // Gone from the window, the keyup never arrives.
+    const letGo = () => this.holdShift(false);
+    addEventListener("blur", letGo);
+    this.offs.push(() => {
+      removeEventListener("keydown", onShift);
+      removeEventListener("keyup", onShift);
+      removeEventListener("blur", letGo);
+    });
+    const onVis = () => {
+      this.holdShift(false);
+      this.save();
+    };
     document.addEventListener("visibilitychange", onVis);
     this.offs.push(() => document.removeEventListener("visibilitychange", onVis));
 
@@ -246,13 +269,15 @@ class SudokuPlay implements Screen {
       showWrong: st.checkMistakes,
       cageTint: st.cageTint,
     });
+    // Held Shift looks like notes mode; aria-pressed stays the toggle's own state.
+    const notes = this.notesMode || this.shiftHeld;
     const counts = g.digitCounts();
-    this.numpad.update(counts.map((n) => 9 - n), this.notesMode, this.peekDigit || this.activeDigit);
+    this.numpad.update(counts.map((n) => 9 - n), notes, this.peekDigit || this.activeDigit);
     this.tools.undo!.disabled = !g.canUndo();
-    this.tools.notes!.classList.toggle("on", this.notesMode);
+    this.tools.notes!.classList.toggle("on", notes);
     this.tools.notes!.setAttribute("aria-pressed", String(this.notesMode));
-    this.tools.notes!.querySelector("span")!.textContent = this.notesMode ? "Notes on" : "Notes";
-    this.el.classList.toggle("notes-mode", this.notesMode);
+    this.tools.notes!.querySelector("span")!.textContent = notes ? "Notes on" : "Notes";
+    this.el.classList.toggle("notes-mode", notes);
     const p = this.progress();
     this.progressEl.style.width = `${(p * 100).toFixed(1)}%`;
     this.timerEl.textContent = st.showTimer ? formatTime(g.elapsedMs) : "";
@@ -261,7 +286,7 @@ class SudokuPlay implements Screen {
       h("span", null, `Hints ${g.hintsUsed}`),
       this.multi.length > 1
         ? h("span", { class: "notes-flag" }, `${this.multi.length} cells · digits pencil into all`)
-        : this.notesMode
+        : notes
           ? h("span", { class: "notes-flag" }, "✎ Pencil mode")
           : h("span", { class: "dim" }, `${Math.round(p * 100)}%`),
     );
@@ -362,6 +387,8 @@ class SudokuPlay implements Screen {
     e.preventDefault();
     sound.unlock();
     this.peekDigit = 0;
+    // Back in the window with Shift already down: no key event said so, but the press does.
+    this.shiftHeld = shiftOnly(e);
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
       const set = this.multi.length ? [...this.multi] : this.selected !== null ? [this.selected] : [];
       const i = set.indexOf(c);
@@ -428,6 +455,13 @@ class SudokuPlay implements Screen {
     this.peekDigit = 0;
     if (this.multi.length > 1) this.game.eraseMany(this.multi);
     else if (this.selected !== null) this.game.erase(this.selected);
+  }
+
+  /** Shift went down or up. Redraws only on a change: a held key repeats its keydown. */
+  private holdShift(on: boolean): void {
+    if (on === this.shiftHeld) return;
+    this.shiftHeld = on;
+    this.render();
   }
 
   private toggleNotes(): void {
