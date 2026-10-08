@@ -1,3 +1,4 @@
+import { regionEquation } from "../../src/engine/region";
 import { claiming, pointing } from "../../src/engine/techniques/intersections";
 import { inniesSingle } from "../../src/engine/techniques/innies";
 import { cageCandidateCombos, cageClaim, cageLastCell, cageLocked, cageSumCombos } from "../../src/engine/techniques/killer";
@@ -158,5 +159,29 @@ describe("classic sanity", () => {
   it("wikipedia puzzle: first hidden single exists", () => {
     const p = classic("530070000600195000098000060800060003400803001700020006060000280000419005000080079");
     expect(hiddenSingle.find(stateWith(p))).not.toBeNull();
+  });
+});
+
+describe("regionEquation (45 lens)", () => {
+  const cages = [
+    cage(0, 3, ["r1c1", "r1c2"]),
+    cage(1, 7, ["r1c3", "r1c4"]),
+    cage(2, 11, ["r1c5", "r1c6"]),
+    cage(3, 18, ["r1c7", "r1c8"]),
+    cage(4, 10, ["r1c9", "r2c9"]),
+  ];
+  it("picks the innie when it's the simpler side", () => {
+    const eq = regionEquation(cages, new Uint8Array(81), [{ kind: "row", index: 0 }])!;
+    expect(eq.side).toBe("innies");
+    expect(eq.empty).toEqual([cell("r1c9")]);
+    expect(eq.target).toBe(6);
+  });
+  it("switches to the outie once the innie is placed", () => {
+    const grid = new Uint8Array(81);
+    grid[cell("r1c9")] = 6;
+    const eq = regionEquation(cages, grid, [{ kind: "row", index: 0 }])!;
+    expect(eq.side).toBe("outies");
+    expect(eq.empty).toEqual([cell("r2c9")]);
+    expect(eq.target).toBe(4);
   });
 });

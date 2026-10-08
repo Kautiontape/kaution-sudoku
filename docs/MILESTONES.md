@@ -19,9 +19,12 @@ Sudoku (classic + killer) and Queens boards, notes, long-press pencil, undo/redo
 (incl. cage peers), "why it's wrong" messages, autosave/resume, keyboard. *Deferred: drag
 multi-select for bulk notes on the sudoku board.*
 
-## M4 — Calculator ⏳ (engine only)
-`calc.ts` tape engine and `region.ts` exist and are tested; the cage bar shows combinations for the
-selected cage. *Deferred: the slide-up tape UI, Region mode, pinned virtual cages.*
+## M4 — Calculator ⏳ (Region mode done)
+The killer cage bar shows the selected cage's combinations, and its **Σ45 lens** is Region mode:
+pick the selected cell's row, column or box and it writes out the 45-rule equation
+("45 − (22+10) = 13, so r4c4 + r6c5 = 13") and rings the innies/outies — using the same
+`region.ts` as the hint technique. *Deferred: the manual tape UI (`calc.ts` engine exists and is
+tested), multi-house regions in the lens, pinned virtual cages.*
 
 ## M5 — Logical solver + hints ✅
 Technique registry tiers 1–5 (sudoku, killer, queens), hint ladder with mistake and notes checks,
@@ -37,10 +40,10 @@ Fish (incl. finned), single-digit patterns, wings, colouring, uniqueness (classi
 ## M8 — PWA polish ✅ (mostly)
 Manifest, icons, offline service worker, dark stage themes, haptics, effects levels, stats
 (solved, best times, streak, per-technique hint counts), generative audio.
+Learn screen worked examples: a real position per technique, drawn with the hint layer.
 *Deferred: install prompt UI, daily puzzle, technique mastery (new / learning / solid).*
 
 ## Next
-- Calculator UI (M4).
-- Worked examples on the Learn screen (a real position per technique, drawn with the hint layer).
+- Calculator tape UI and multi-house lens (M4).
 - Technique mastery tracking by classifying the player's own placements.
 - Training packs; "explain my mistake" replay.

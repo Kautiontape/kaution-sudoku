@@ -5,9 +5,10 @@
  */
 import { digitsOf } from "../../engine/combos";
 import { comboText } from "../../engine/hints/format";
-import { CELL_HOUSES, colOf, HOUSE_CELLS, houseIndex, rowOf } from "../../engine/geometry";
+import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseCells, houseIndex, houseName, rowOf } from "../../engine/geometry";
 import type { SudokuHint } from "../../engine/hints/index";
 import { decodeSudoku, encodeSudoku } from "../../engine/pack";
+import { regionEquation, type RegionEquation } from "../../engine/region";
 import { createState } from "../../engine/state";
 import { cageView } from "../../engine/techniques/killer";
 import type { CellId, Difficulty, House, Puzzle } from "../../engine/types";
@@ -73,6 +74,8 @@ class SudokuPlay implements Screen {
   private lastPlaced: CellId = 40;
   /** Set when this game is being thrown away (restart): skip the final save. */
   private discard = false;
+  /** Killer 45-rule lens: which house of the selected cell to analyse, or off. */
+  private lensKind: "row" | "col" | "box" | null = null;
 
   constructor(
     private app: App,
@@ -206,10 +209,14 @@ class SudokuPlay implements Screen {
 
   private renderCageBar(): void {
     if (!this.cageBar) return;
+    if (this.lensKind) return this.renderLens();
+    this.cageBar.classList.remove("lens-mode");
+    this.board.setLens(null);
     const st = settings();
+    const lensBtn = h("button", { class: "lens-btn", type: "button", "aria-label": "45 rule lens", "data-testid": "lens", onclick: () => this.setLens("row") }, "Σ45");
     const cage = this.selected !== null ? this.game.cageOf(this.selected) : undefined;
     if (!cage || !st.showCombos) {
-      this.cageBar.replaceChildren(h("span", { class: "dim" }, cage ? `Cage ${cage.sum} · ${cage.cells.length} cells` : "Select a cell to see its cage"));
+      this.cageBar.replaceChildren(lensBtn, h("span", { class: "dim" }, cage ? `Cage ${cage.sum} · ${cage.cells.length} cells` : "Select a cell to see its cage"));
       return;
     }
     const s = createState(this.puzzle, this.game.grid, null);
@@ -221,6 +228,7 @@ class SudokuPlay implements Screen {
     const chips = v.combos.map((m) => h("span", { class: `combo${m & blocked ? " out" : ""}` }, comboText(m)));
     const must = v.combos.filter((m) => !(m & blocked)).reduce((a, m) => a & m, 0x3fe);
     const parts: HTMLElement[] = [
+      lensBtn,
       h("b", null, `${cage.sum}`),
       h(
         "span",
@@ -232,6 +240,36 @@ class SudokuPlay implements Screen {
     if (chips.length > 12) parts.push(h("span", { class: "dim" }, `+${chips.length - 12}`));
     if (v.empty.length && digitsOf(must).length && v.combos.length > 1) parts.push(h("span", { class: "must" }, `needs ${digitsOf(must).join(",")}`));
     this.cageBar.replaceChildren(...parts);
+  }
+
+  private setLens(kind: "row" | "col" | "box" | null): void {
+    this.lensKind = kind;
+    sound.ui("toggle");
+    this.render();
+  }
+
+  /** The 45 rule for the selected cell's row, column or box, worked out on the board. */
+  private renderLens(): void {
+    const c = this.selected ?? 40;
+    const kind = this.lensKind!;
+    const house = { kind, index: kind === "row" ? rowOf(c) : kind === "col" ? colOf(c) : boxOf(c) };
+    const eq = regionEquation(this.puzzle.cages, this.game.grid, [house]);
+    const chip = (k: "row" | "col" | "box", label: string) =>
+      h("button", { class: `lens-chip${k === kind ? " active" : ""}`, type: "button", onclick: () => this.setLens(k) }, label);
+    this.cageBar!.classList.add("lens-mode");
+    this.cageBar!.replaceChildren(
+      h("button", { class: "lens-btn on", type: "button", "aria-label": "Close 45 lens", "data-testid": "lens", onclick: () => this.setLens(null) }, "Σ45 ✕"),
+      chip("row", `Row ${rowOf(c) + 1}`),
+      chip("col", `Col ${colOf(c) + 1}`),
+      chip("box", `Box ${boxOf(c) + 1}`),
+      h("span", { class: "lens-eq", "data-testid": "lens-eq" }, lensText(eq, houseName(house))),
+    );
+    const readable = eq && eq.empty.length <= LENS_MAX;
+    this.board.setLens({
+      region: houseCells(house),
+      innies: readable && eq.side === "innies" ? eq.empty : [],
+      outies: readable && eq.side === "outies" ? eq.empty : [],
+    });
   }
 
   // ------------------------------------------------------------------------------------------
@@ -561,6 +599,25 @@ class SudokuPlay implements Screen {
     );
     document.body.append(menu);
   }
+}
+
+/** Most open cells the lens will treat as a readable sum. */
+const LENS_MAX = 4;
+
+function lensText(eq: RegionEquation | null, region: string): string {
+  if (!eq) return `Every cage fits inside ${region} — nothing pokes out.`;
+  if (eq.empty.length > LENS_MAX)
+    return `${eq.empty.length} open cells poke out of ${region} — too many to pin down. Try another house.`;
+  const a = eq.analysis;
+  const names = eq.empty.map(cellName).join(" + ");
+  const placed = eq.placed.reduce((s, p) => s + p.digit, 0);
+  const minusPlaced = placed ? ` − ${placed} placed` : "";
+  if (eq.side === "innies") {
+    if (!eq.empty.length) return `45 − (${a.inside.map((c) => c.sum).join("+")}) = ${a.innieSum}: the innies are all placed.`;
+    return `45 − (${a.inside.map((c) => c.sum).join("+")})${minusPlaced} = ${eq.target}, so ${names} = ${eq.target}.`;
+  }
+  const crossing = a.partial.reduce((s, p) => s + p.cage.sum, 0);
+  return `Cages crossing out total ${crossing}: ${a.insideSum} + ${crossing} − 45${minusPlaced} = ${eq.target}, so ${names} = ${eq.target}.`;
 }
 
 const dist = (a: CellId, b: CellId) => Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b));

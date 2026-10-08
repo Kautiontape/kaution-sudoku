@@ -96,6 +96,39 @@ export const MULTI_REGIONS: House[][] = [
   ...runs("col", 4),
 ];
 
+export interface RegionEquation {
+  analysis: RegionAnalysis;
+  side: "innies" | "outies";
+  /** Empty cells on the chosen side. */
+  empty: CellId[];
+  /** Digits already placed on the chosen side. */
+  placed: { cell: CellId; digit: number }[];
+  /** What the empty cells add up to. */
+  target: number;
+}
+
+/**
+ * The more readable side of the 45 rule for the current board: whichever of innies / outies has
+ * fewer empty cells (innies on a tie; a side with nothing left open is skipped). Null when every
+ * cage fits inside the region.
+ */
+export function regionEquation(cages: readonly Cage[], grid: ArrayLike<number>, houses: readonly House[]): RegionEquation | null {
+  const analysis = analyzeRegion(cages, houses);
+  if (!analysis.innies.length) return null;
+  const side = (name: "innies" | "outies"): RegionEquation => {
+    const cells = name === "innies" ? analysis.innies : analysis.outies;
+    const sum = name === "innies" ? analysis.innieSum : analysis.outieSum;
+    const empty = cells.filter((c) => !grid[c]);
+    const placed = cells.filter((c) => grid[c]).map((c) => ({ cell: c, digit: grid[c]! }));
+    return { analysis, side: name, empty, placed, target: sum - placed.reduce((a, p) => a + p.digit, 0) };
+  };
+  const inn = side("innies");
+  const out = side("outies");
+  // Prefer the side with the fewest open cells, ignoring a side that's already complete.
+  if (!inn.empty.length) return out.empty.length ? out : inn;
+  return out.empty.length && out.empty.length < inn.empty.length ? out : inn;
+}
+
 const cache = new WeakMap<readonly Cage[], Map<string, RegionAnalysis>>();
 
 /** Memoized per cage list (cages are static during a game). */

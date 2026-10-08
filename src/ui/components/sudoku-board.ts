@@ -236,6 +236,15 @@ export class SudokuBoard {
     this.restart(this.el, "punch");
   }
 
+  /** 45-rule lens: tint a region and ring its innies and outies. */
+  setLens(lens: { region: CellId[]; innies: CellId[]; outies: CellId[] } | null): void {
+    for (const el of this.cellEls) el.classList.remove("lens-region", "lens-in", "lens-out");
+    if (!lens) return;
+    for (const c of lens.region) this.cellEls[c]!.classList.add("lens-region");
+    for (const c of lens.innies) this.cellEls[c]!.classList.add("lens-in");
+    for (const c of lens.outies) this.cellEls[c]!.classList.add("lens-out");
+  }
+
   // ------------------------------------------------------------------------------------------
   // Hints
 

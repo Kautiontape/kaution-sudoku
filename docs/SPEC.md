@@ -38,7 +38,9 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
 - Highlights: selected cell, its peers, its cage, every cell with the same digit, matching notes.
 - Digit pad shows how many of each digit remain; finished digits dim.
 - Killer: a cage bar lists the selected cage's combinations, striking out ones that clash with
-  digits already placed in a house the cage lives in (setting).
+  digits already placed in a house the cage lives in (setting). Its **Σ45 lens** works the 45 rule
+  for the selected cell's row, column or box: it writes the equation and rings the innies or
+  outies on the board (the calculator's Region mode).
 - Queens: tap cycles empty → ✕ → queen; long-press drops a queen; drag across cells to ✕ many.
   Auto-✕ (setting) shows cells ruled out by placed queens without storing them.
 - Keyboard: digits, Shift/Alt+digit for notes, arrows, Backspace, N (notes), H (hint),
@@ -134,9 +136,8 @@ camera import.
 
 ## 8. Ideas parking lot
 
-- **Sum calculator ("the tape")** for killer — the engine (`calc.ts`, `region.ts`) exists; the
-  slide-up UI with Region mode and pinned virtual cages is the next big teaching feature.
-- Worked examples on the Learn screen (a real board position per technique).
+- **Sum calculator tape** for killer — `calc.ts` exists; the manual tape UI, multi-house regions in
+  the Σ45 lens, and pinned virtual cages are the next teaching features.
 - Technique mastery tracking (new / learning / solid) by classifying the player's own placements.
 - "Explain my mistake" replay; daily puzzle; training packs per technique.
 - Beat-quantised placements (more musical, less immediate) as an option.

@@ -83,6 +83,22 @@ test("killer: cages render and a cage repeat is explained", async ({ page }) => 
   await page.screenshot({ path: "test-results/screens/killer.png" });
 });
 
+test("killer: the 45 lens works out a house's innies or outies", async ({ page }) => {
+  await page.goto("/?play=killer-medium");
+  await page.locator(".board .cell").nth(40).click();
+  await page.getByTestId("lens").click();
+  await expect(page.getByTestId("lens-eq")).toContainText(/45|cage fits|poke out/);
+  await expect(page.locator(".cell.lens-region")).toHaveCount(9);
+  await page.getByRole("button", { name: "Box 5" }).click();
+  await expect(page.locator(".cell.lens-region")).toHaveCount(9);
+  const text = await page.getByTestId("lens-eq").innerText();
+  // A readable equation names its cells and rings them on the board.
+  if (/so r\dc\d/.test(text)) expect(await page.locator(".cell.lens-in, .cell.lens-out").count()).toBeGreaterThan(0);
+  await page.screenshot({ path: "test-results/screens/killer-lens.png" });
+  await page.getByTestId("lens").click(); // close
+  await expect(page.locator(".cell.lens-region")).toHaveCount(0);
+});
+
 test("killer: the first hints teach cage combinations", async ({ page }) => {
   await page.goto("/?play=killer-easy");
   const why = await applyNextHint(page);
