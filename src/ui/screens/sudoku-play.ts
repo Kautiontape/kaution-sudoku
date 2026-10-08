@@ -3,6 +3,7 @@
  * Tetris-Effect-style feedback: every placement plays a note and sparks in its digit's colour,
  * completions sweep light across the house with a callout, and solving sets off the finale.
  */
+import { cageTally, type CageTally } from "../../engine/calc";
 import { digitsOf } from "../../engine/combos";
 import { comboText } from "../../engine/hints/format";
 import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseCells, houseIndex, houseName, rowOf } from "../../engine/geometry";
@@ -270,11 +271,18 @@ class SudokuPlay implements Screen {
 
   private renderCageBar(): void {
     if (!this.cageBar) return;
+    // Cells picked across two or more cages: those cages' total, and their outlines lit.
+    const tally = this.lensKind ? null : cageTally(this.puzzle.cages, this.multi, this.game.grid);
+    this.board.setTally(tally?.cages.map((k) => k.id) ?? []);
     if (this.lensKind) return this.renderLens();
     this.cageBar.classList.remove("lens-mode");
     this.board.setLens(null);
     const st = settings();
     const lensBtn = h("button", { class: "lens-btn", type: "button", "aria-label": "45 rule lens", "data-testid": "lens", onclick: () => this.setLens("row") }, "Σ45");
+    if (tally) {
+      this.cageBar.replaceChildren(lensBtn, ...tallyNodes(tally));
+      return;
+    }
     const cage = this.selected !== null ? this.game.cageOf(this.selected) : undefined;
     if (!cage || !st.showCombos) {
       this.cageBar.replaceChildren(lensBtn, h("span", { class: "dim" }, cage ? `Cage ${cage.sum} · ${cage.cells.length} cells` : "Select a cell to see its cage"));
@@ -780,6 +788,15 @@ function lensText(eq: RegionEquation | null, region: string): string {
   }
   const crossing = a.partial.reduce((s, p) => s + p.cage.sum, 0);
   return `Cages crossing out total ${crossing}: ${a.insideSum} + ${crossing} − 45${minusPlaced} = ${eq.target}, so ${names} = ${eq.target}.`;
+}
+
+/** "54 = 11 + 12 + 12 + 19 · in 11 cells": the total first, so a long sum never scrolls it away. */
+function tallyNodes(t: CageTally): HTMLElement[] {
+  const left = !t.open ? "cages complete" : t.open === t.cells ? `in ${t.cells} cells` : `${t.rem} left in ${t.open}`;
+  return [
+    h("span", { class: "tally", "data-testid": "cage-total" }, h("b", null, String(t.sum)), ` = ${t.cages.map((k) => k.sum).join(" + ")}`),
+    h("span", { class: "dim" }, left),
+  ];
 }
 
 const dist = (a: CellId, b: CellId) => Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b));

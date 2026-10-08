@@ -1,4 +1,4 @@
-import { evaluateTape, formatResult, formatTape, UnknownCageError, type Term } from "../../src/engine/calc";
+import { cageTally, evaluateTape, formatResult, formatTape, UnknownCageError, type Term } from "../../src/engine/calc";
 import { parseCellName } from "../../src/engine/geometry";
 import type { Puzzle } from "../../src/engine/types";
 import fixture from "../fixtures/patterned.json";
@@ -80,5 +80,33 @@ describe("formatTape", () => {
     grid[cell("r3c4")] = 4;
     const s = formatTape([lit(45), lit(8, -1), cage(3), sym("r3c4"), sym("r3c2", 1)], { puzzle, grid });
     expect(s).toBe("45 − 8 − [24] − r3c4=4 + r3c2");
+  });
+});
+
+describe("cageTally", () => {
+  const ids = (t: ReturnType<typeof cageTally>) => t?.cages.map((k) => k.id);
+
+  it("adds up every cage the picked cells touch, each once, in the order they were reached", () => {
+    const t = cageTally(puzzle.cages, [cell("r1c5"), cell("r1c1"), cell("r1c2"), cell("r1c3")], empty());
+    expect(ids(t)).toEqual([2, 0, 1]);
+    expect(t).toMatchObject({ sum: 11 + 3 + 7, cells: 6, open: 6, rem: 21 });
+  });
+
+  it("counts two different cages with the same clue twice", () => {
+    expect(cageTally(puzzle.cages, [cell("r3c1"), cell("r3c7")], empty())).toMatchObject({ sum: 30, cells: 5 });
+  });
+
+  it("says what the open cells still need once digits are in", () => {
+    const grid = empty();
+    grid[cell("r1c1")] = 1;
+    grid[cell("r1c4")] = 4;
+    expect(cageTally(puzzle.cages, [cell("r1c1"), cell("r1c3")], grid)).toMatchObject({ sum: 10, cells: 4, open: 2, rem: 5 });
+  });
+
+  it("is nothing for one cage (it has its own readout), and ignores virtual cages", () => {
+    expect(cageTally(puzzle.cages, [cell("r1c1"), cell("r1c2")], empty())).toBeNull();
+    expect(cageTally(puzzle.cages, [], empty())).toBeNull();
+    const pinned = { id: 99, sum: 10, cells: [cell("r1c1"), cell("r1c3")], virtual: true };
+    expect(ids(cageTally([pinned, ...puzzle.cages], [cell("r1c1"), cell("r1c3")], empty()))).toEqual([0, 1]);
   });
 });

@@ -19,12 +19,13 @@ Sudoku (classic + killer) and Queens boards, notes, long-press pencil, undo/redo
 (incl. cage peers), "why it's wrong" messages, autosave/resume, keyboard, drag across cells to
 pencil a digit into all of them.
 
-## M4 — Calculator ⏳ (Region mode done)
+## M4 — Calculator ⏳ (Region mode and cage totals done)
 The killer cage bar shows the selected cage's combinations, and its **Σ45 lens** is Region mode:
 pick the selected cell's row, column or box and it writes out the 45-rule equation
 ("45 − (22+10) = 13, so r4c4 + r6c5 = 13") and rings the innies/outies — using the same
-`region.ts` as the hint technique. *Deferred: the manual tape UI (`calc.ts` engine exists and is
-tested), multi-house regions in the lens, pinned virtual cages.*
+`region.ts` as the hint technique. Selecting cells across several cages adds those cages up on
+the bar (`cageTally` in `calc.ts`) and lights them. *Deferred: the manual tape UI (`calc.ts`
+engine exists and is tested), multi-house regions in the lens, pinned virtual cages.*
 
 ## M5 — Logical solver + hints ✅
 Technique registry tiers 1–5 (sudoku, killer, queens), hint ladder with mistake and notes checks,

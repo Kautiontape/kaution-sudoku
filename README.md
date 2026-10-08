@@ -21,6 +21,7 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
   board drawn with the same hint visuals.
 - **Killer helpers.** The cage bar lists a cage's combinations; its **Σ45 lens** works the 45 rule
   for any row, column or box ("45 − (22+10) = 13, so r4c4 + r6c5 = 13") and rings the cells.
+  Select cells across several cages and it adds those cages up: "54 = 11 + 12 + 12 + 19".
 - **Comfortable input.** Hold a digit to light it up across the grid; drag (or Shift / Ctrl-click)
   to select several cells, then pencil a digit into all of them or erase them all at once;
   auto-notes; unlimited undo. On desktop: Shift+digit pencils, Space toggles notes, Shift+arrow

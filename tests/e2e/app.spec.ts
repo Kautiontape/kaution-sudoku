@@ -304,6 +304,42 @@ test("killer: the 45 lens works out a house's innies or outies", async ({ page }
   await expect(page.locator(".cell.lens-region")).toHaveCount(0);
 });
 
+test("killer: cells picked across cages show those cages' total, each cage once, and light them up", async ({ page }) => {
+  await page.goto("/?play=killer-medium");
+  const board = await readBoard(page);
+  const sums = new Map(await page.$$eval(".sum[data-cage]", (els) => els.map((el) => [Number((el as HTMLElement).dataset.cage), Number(el.textContent)] as const)));
+  const firstCell = new Map<number, number>();
+  for (const x of board) if (!firstCell.has(Number(x.cage))) firstCell.set(Number(x.cage), x.cell);
+  // As in the request: four cages, two of them different cages with the same clue.
+  const ids = [...firstCell.keys()];
+  const twin = ids.find((a) => ids.some((b) => b !== a && sums.get(b) === sums.get(a)))!;
+  const other = ids.find((b) => b !== twin && sums.get(b) === sums.get(twin))!;
+  const rest = ids.filter((k) => k !== twin && k !== other).slice(0, 2);
+  const picked = [twin, rest[0]!, other, rest[1]!];
+  const y = (await page.getByTestId("board").boundingBox())!.y;
+  await cellLocator(page, firstCell.get(picked[0]!)!).click();
+  for (const k of picked.slice(1)) await cellLocator(page, firstCell.get(k)!).click({ modifiers: ["Shift"] });
+  const text = `${picked.reduce((a, k) => a + sums.get(k)!, 0)} = ${picked.map((k) => sums.get(k)).join(" + ")}`;
+  await expect(page.getByTestId("cage-total")).toHaveText(text);
+  await expect(page.locator(".cage.tallied")).toHaveCount(4);
+  expect((await page.getByTestId("board").boundingBox())!.y).toBe(y); // one line: nothing moves under a drag
+  await page.screenshot({ path: "test-results/screens/cage-total.png" });
+  // Another cell of a counted cage adds nothing.
+  const extra = board.find((x) => picked.includes(Number(x.cage)) && x.cell !== firstCell.get(Number(x.cage)))!;
+  await cellLocator(page, extra.cell).click({ modifiers: ["Shift"] });
+  await expect(page.getByTestId("cage-total")).toHaveText(text);
+  // The Σ45 lens takes the bar over; Esc steps back to the total, then to a single cell.
+  await page.keyboard.press("l");
+  await expect(page.getByTestId("cage-total")).toHaveCount(0);
+  await expect(page.locator(".cage.tallied")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("cage-total")).toHaveText(text);
+  await expect(page.locator(".cage-bar.lens-mode")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("cage-total")).toHaveCount(0);
+  await expect(page.locator(".cage.tallied")).toHaveCount(0);
+});
+
 test("killer: a hint goes straight for a digit and places it", async ({ page }) => {
   await page.goto("/?play=killer-easy");
   await landed(page);

@@ -46,7 +46,9 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
 - Killer: a cage bar lists the selected cage's combinations, striking out ones that clash with
   digits already placed in a house the cage lives in (setting). Its **Σ45 lens** works the 45 rule
   for the selected cell's row, column or box: it writes the equation and rings the innies or
-  outies on the board (the calculator's Region mode).
+  outies on the board (the calculator's Region mode). Select cells across two or more cages and
+  the bar adds those cages up instead — "54 = 11 + 12 + 12 + 19 in 11 cells", each cage once
+  (or what its open cells have left, once digits are in) — and lights their outlines.
 - Queens: tap puts an ✕ on or takes it off; double-tap (second tap within ~⅓ s) makes a queen, as
   one undo step; hold clears a cell; drag paints ✕s (or erases them, if the drag starts on an ✕),
   one undo step per drag. A single tap never removes a queen (it nudges "hold to clear"), so a

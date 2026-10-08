@@ -121,3 +121,40 @@ export function formatTape(terms: Term[], ctx: CalcContext): string {
     })
     .join(" ");
 }
+
+/** The cages a selection touches, added up. */
+export interface CageTally {
+  /** Each cage once, in the order the selection first reached it. */
+  cages: Puzzle["cages"];
+  /** Their clues added up. */
+  sum: number;
+  /** How many cells they cover. */
+  cells: number;
+  /** Of those, how many are still empty, and what those have left to make. */
+  open: number;
+  rem: number;
+}
+
+/**
+ * The total of the printed cages the picked cells touch, however many of each cage's cells are
+ * picked. Null for fewer than two cages: one cage already has its own readout.
+ */
+export function cageTally(cages: Puzzle["cages"], picked: readonly CellId[], grid: Grid): CageTally | null {
+  const hit: Puzzle["cages"] = [];
+  for (const c of picked) {
+    const cage = cages.find((k) => !k.virtual && k.cells.includes(c));
+    if (cage && !hit.includes(cage)) hit.push(cage);
+  }
+  if (hit.length < 2) return null;
+  const t: CageTally = { cages: hit, sum: 0, cells: 0, open: 0, rem: 0 };
+  for (const k of hit) {
+    t.sum += k.sum;
+    t.rem += k.sum;
+    t.cells += k.cells.length;
+    for (const c of k.cells) {
+      if (grid[c]) t.rem -= grid[c]!;
+      else t.open++;
+    }
+  }
+  return t;
+}

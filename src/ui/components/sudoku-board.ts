@@ -308,6 +308,11 @@ export class SudokuBoard {
     this.restart(this.el, "punch");
   }
 
+  /** Light the cages a selection adds up (the cage bar shows their total). */
+  setTally(ids: readonly number[]): void {
+    for (const [id, p] of this.cagePaths) p.classList.toggle("tallied", ids.includes(id));
+  }
+
   /** 45-rule lens: tint a region and ring its innies and outies. */
   setLens(lens: { region: CellId[]; innies: CellId[]; outies: CellId[] } | null): void {
     for (const el of this.cellEls) el.classList.remove("lens-region", "lens-in", "lens-out");
