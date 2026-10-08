@@ -94,6 +94,7 @@ class QueensPlay implements Screen {
       refColors: (ladder, rung) => this.board.refColors(ladder, rung),
       onRef: (name) => this.board.flashRef(name),
     });
+    this.sheet.dismissOn(this.board.el);
     this.timerEl = h("div", { class: "timer" });
     this.progressEl = h("i");
     this.statsEl = h("div", { class: "stats" });
@@ -250,7 +251,6 @@ class QueensPlay implements Screen {
   /** Tap: ✕ on, or off again. A queen ignores taps, so a stray tap can't knock one off. */
   private tap(c: QCell): void {
     sound.unlock();
-    if (this.sheet.isOpen) this.closeHint();
     if (this.game.marks[c] === QUEEN) {
       this.board.shake(c);
       toast("Hold a queen to clear it.", "info", 2200);
@@ -260,14 +260,12 @@ class QueensPlay implements Screen {
   }
 
   private doubleTap(c: QCell): void {
-    if (this.sheet.isOpen) this.closeHint();
     this.game.doubleTap(c);
   }
 
   /** Hold: clear the cell. */
   private hold(c: QCell): void {
     sound.unlock();
-    if (this.sheet.isOpen) this.closeHint();
     if (this.game.marks[c] === EMPTY) return;
     this.game.clear(c);
     buzz("tap");

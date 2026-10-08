@@ -55,6 +55,20 @@ export class HintSheet {
     return this.el.classList.contains("open");
   }
 
+  /** While the sheet is open, a press on `el` (the board) only closes it; nothing underneath acts. */
+  dismissOn(el: HTMLElement): void {
+    el.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!this.isOpen) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.handlers.onClose();
+      },
+      { capture: true },
+    );
+  }
+
   get currentRung(): number {
     return this.rung;
   }

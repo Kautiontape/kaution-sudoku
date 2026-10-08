@@ -224,6 +224,29 @@ test("hint text colours each square it names and rings that square in the same c
   await expect(page.locator(".ref-ring.on")).toHaveCount(0);
 });
 
+test("a tap on the board while a hint is open only closes it: nothing is selected or placed", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const board = await readBoard(page);
+  const sheet = page.getByTestId("hint-sheet");
+  await digitKey(page, 5).click(); // with nothing selected, 5 becomes the digit a tap on the selected square repeats
+  await page.getByTestId("tool-hint").click();
+  await page.getByTestId("hint-next").click(); // → what: the hint selects its square
+  const target = Number(await page.locator(".board .cell.sel").getAttribute("data-cell"));
+  const filled = await page.locator(".board .cell.filled").count();
+  await cellLocator(page, target).click();
+  await expect(sheet).not.toHaveClass(/open/);
+  await expect(page.locator(".board .cell.filled")).toHaveCount(filled);
+  await expect(cellLocator(page, target)).toHaveClass(/\bsel\b/);
+  // Any other square too: the hint closes and the selection stays put.
+  const other = board.find((x) => !x.value && x.cell !== target)!;
+  await page.getByTestId("tool-hint").click();
+  await cellLocator(page, other.cell).click();
+  await expect(sheet).not.toHaveClass(/open/);
+  await expect(cellLocator(page, other.cell)).not.toHaveClass(/\bsel\b/);
+  await cellLocator(page, other.cell).click(); // closed: taps select as usual
+  await expect(cellLocator(page, other.cell)).toHaveClass(/\bsel\b/);
+});
+
 test("classic easy can be solved by hints; the next level follows on its own and Scores keeps the result", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/?play=classic-easy");
@@ -494,6 +517,20 @@ test("queens: squares named in a hint take their region's colour and light up", 
     expect(await cell.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--rc"))).toBe(color);
   }
   await page.screenshot({ path: "test-results/screens/queens-hint-refs.png" });
+});
+
+test("queens: a tap on the board while a hint is open only closes it", async ({ page }) => {
+  await page.goto("/?play=queens-easy");
+  const cell = page.locator(".qcell").first();
+  await expect(cell).toBeVisible();
+  const sheet = page.getByTestId("hint-sheet");
+  await page.getByTestId("tool-hint").click();
+  await expect(sheet).toHaveClass(/open/);
+  await cell.click();
+  await expect(sheet).not.toHaveClass(/open/);
+  await expect(cell).not.toHaveClass(/cross|queen/);
+  await cell.click(); // closed: a tap marks as usual
+  await expect(cell).toHaveClass(/cross/);
 });
 
 test("learn and settings overlays open and close", async ({ page }) => {

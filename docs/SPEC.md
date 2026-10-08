@@ -136,7 +136,8 @@ In Queens a name takes the colour of the square's region (hints name regions by 
 a name pulses its ring. Learn examples and the Σ45 lens equation colour names the same way.
 While the sheet is open the board is pinned above it, so every row stays visible, and faint row
 and column numbers appear around it; the row and column of each named square light up in that
-square's colour.
+square's colour. A tap on the board then only closes the sheet: it never selects, places or
+marks anything (all three modes).
 
 ### Technique coverage
 - **Sudoku (classic + killer):** full house, hidden/naked singles, pointing, box/line reduction,

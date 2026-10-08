@@ -115,6 +115,7 @@ class SudokuPlay implements Screen {
       refColors: (ladder, rung) => this.board.refColors(ladder, rung),
       onRef: (name) => this.board.flashRef(name),
     });
+    this.sheet.dismissOn(this.board.el);
 
     this.timerEl = h("div", { class: "timer", "data-testid": "timer" });
     this.progressEl = h("i");
