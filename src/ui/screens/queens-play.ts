@@ -2,7 +2,7 @@
 import { attacks, colOf, rowOf } from "../../engine/queens/geometry";
 import type { QueensHint, RegionNamer } from "../../engine/queens/hints";
 import { decodeQueens, encodeQueens, type QueensPackEntry } from "../../engine/queens/pack";
-import { QUEEN, type QCell, type QueensPuzzle } from "../../engine/queens/types";
+import { CROSS, EMPTY, QUEEN, type QCell, type QueensPuzzle } from "../../engine/queens/types";
 import type { Difficulty } from "../../engine/types";
 import { loadQueensPack, pickNext } from "../../game/packs";
 import { QueensGame, type QueensEvent, type SavedQueens } from "../../game/queens-game";
@@ -55,6 +55,12 @@ class QueensPlay implements Screen {
   private statsEl: HTMLElement;
   private autoBtn: HTMLButtonElement;
   private undoBtn: HTMLButtonElement;
+  private scratchBtn: HTMLButtonElement;
+  /** Gesture help, or the scratch bar (Wipe / Keep) while scratching. */
+  private helpEl: HTMLElement;
+  private helpScratch: boolean | null = null;
+  /** What the current drag paints: ✕s, or (started on an ✕) empties. */
+  private dragMark: typeof CROSS | typeof EMPTY = CROSS;
   private tick = 0;
   private offs: (() => void)[] = [];
   private discard = false;
@@ -70,8 +76,9 @@ class QueensPlay implements Screen {
     this.game.settings.checkMistakes = settings().checkMistakes;
     this.board = new QueensBoard(puzzle, {
       onTap: (c) => this.tap(c),
-      onLong: (c) => this.long(c),
-      onDrag: (cells) => this.drag(cells),
+      onDoubleTap: (c) => this.doubleTap(c),
+      onLong: (c) => this.hold(c),
+      onDrag: (cells, first) => this.drag(cells, first),
     });
     this.sheet = new HintSheet({
       onRung: (r) => this.onRung(r),
@@ -91,6 +98,8 @@ class QueensPlay implements Screen {
       updateSettings({ autoCross: !settings().autoCross });
       sound.ui("toggle");
     });
+    this.scratchBtn = btn("scratch", ICONS.pencil, "Scratch", () => this.toggleScratch());
+    this.helpEl = h("div", { class: "qhelp", "data-testid": "qhelp" });
     this.el = h(
       "main",
       { class: "screen play queens", "data-testid": "play" },
@@ -105,13 +114,14 @@ class QueensPlay implements Screen {
       h("div", { class: "progress" }, this.progressEl),
       this.statsEl,
       h("div", { class: "board-area" }, this.board.el),
-      h("p", { class: "qhelp" }, "Tap for ✕, tap again for a queen · hold for a queen · drag to ✕ many"),
+      this.helpEl,
       h(
         "div",
         { class: "tools" },
         this.undoBtn,
         btn("clear", ICONS.trash, "Clear", () => this.game.clearAll()),
         this.autoBtn,
+        this.scratchBtn,
         btn("hint", ICONS.bulb, "Hint", () => this.openHint(), "hint-tool"),
       ),
       this.sheet.el,
@@ -128,6 +138,7 @@ class QueensPlay implements Screen {
         if (e.shiftKey) this.game.redo();
         else this.game.undo();
       } else if (e.key === "h" || e.key === "H") this.sheet.isOpen ? this.sheet.advance() : this.openHint();
+      else if (e.key === "s" || e.key === "S") this.toggleScratch();
       else if (e.key === "Escape" && this.sheet.isOpen) this.closeHint();
     };
     addEventListener("keydown", onKey);
@@ -149,39 +160,96 @@ class QueensPlay implements Screen {
   private render(): void {
     const g = this.game;
     const st = settings();
+    const base = g.scratchBase;
+    // Only real queens are ever called wrong: judging a scratch queen would give the answer away.
     const wrong = new Set<QCell>();
-    if (st.checkMistakes) for (const q of g.queens()) if (!g.isSolutionCell(q)) wrong.add(q);
-    this.board.render({ marks: g.marks, attacked: st.autoCross ? g.attacked() : null, conflicts: g.conflicts(), wrong });
+    if (st.checkMistakes) for (const q of g.queens()) if (!g.isSolutionCell(q) && (!base || base[q] === QUEEN)) wrong.add(q);
+    const attacked = st.autoCross ? g.attacked() : null;
+    // Scratch marks, and the auto-✕s that only a scratch queen causes, are drawn sketchily.
+    let scratch: Set<QCell> | undefined;
+    if (base) {
+      const realAttacked = attacked && g.attacked(base);
+      scratch = new Set();
+      g.marks.forEach((m, c) => {
+        if (m !== EMPTY ? m !== base[c] : attacked?.[c] && !realAttacked?.[c]) scratch!.add(c);
+      });
+    }
+    this.board.render({ marks: g.marks, attacked, conflicts: g.conflicts(), wrong, scratch, scratching: g.scratching });
+    this.el.classList.toggle("scratch-mode", g.scratching);
     this.undoBtn.disabled = !g.canUndo();
     this.autoBtn.classList.toggle("on", st.autoCross);
     this.autoBtn.setAttribute("aria-pressed", String(st.autoCross));
+    this.scratchBtn.classList.toggle("on", g.scratching);
+    this.scratchBtn.setAttribute("aria-pressed", String(g.scratching));
+    this.scratchBtn.lastElementChild!.textContent = g.scratching ? "Scratch on" : "Scratch";
+    this.renderHelp();
     const p = g.progress();
     this.progressEl.style.width = `${(p * 100).toFixed(1)}%`;
     this.timerEl.textContent = st.showTimer ? formatTime(g.elapsedMs) : "";
     this.statsEl.replaceChildren(
       h("span", { class: g.mistakes ? "bad" : "" }, `Mistakes ${g.mistakes}`),
-      h("span", null, `Hints ${g.hintsUsed}`),
+      g.scratching ? h("span", { class: "notes-flag" }, "✎ Scratch") : h("span", null, `Hints ${g.hintsUsed}`),
       h("span", { class: "dim" }, `${g.queens().length} / ${g.n} queens`),
     );
     this.app.bg.setIntensity(0.15 + p * 0.85);
     sound.setIntensity(p);
   }
 
+  /** The gesture line, swapped for Wipe / Keep while scratching (rebuilt only when that flips). */
+  private renderHelp(): void {
+    const on = this.game.scratching;
+    if (this.helpScratch === on) return;
+    this.helpScratch = on;
+    this.helpEl.replaceChildren(
+      ...(on
+        ? [
+            h("span", null, "Scratch: try anything, none of it counts"),
+            h("button", { class: "qchip", type: "button", "data-testid": "scratch-wipe", onclick: () => this.game.wipeScratch() }, "Wipe"),
+            h("button", { class: "qchip keep", type: "button", "data-testid": "scratch-keep", onclick: () => this.game.keepScratch() }, "Keep"),
+          ]
+        : [h("span", null, "Tap ✕ · double-tap queen · hold to clear · drag to ✕ many")]),
+    );
+  }
+
+  /** Tap: ✕ on, or off again. A queen ignores taps, so a stray tap can't knock one off. */
   private tap(c: QCell): void {
     sound.unlock();
     if (this.sheet.isOpen) this.closeHint();
-    this.game.cycle(c);
+    if (this.game.marks[c] === QUEEN) {
+      this.board.shake(c);
+      toast("Hold a queen to clear it.", "info", 2200);
+      return;
+    }
+    this.game.tap(c);
   }
 
-  private long(c: QCell): void {
+  private doubleTap(c: QCell): void {
+    if (this.sheet.isOpen) this.closeHint();
+    this.game.doubleTap(c);
+  }
+
+  /** Hold: clear the cell. */
+  private hold(c: QCell): void {
     sound.unlock();
     if (this.sheet.isOpen) this.closeHint();
-    if (this.game.marks[c] !== QUEEN) this.game.setMark(c, QUEEN);
-    buzz("place");
+    if (this.game.marks[c] === EMPTY) return;
+    this.game.clear(c);
+    buzz("tap");
   }
 
-  private drag(cells: QCell[]): void {
-    this.game.crossCells(cells);
+  /** A drag paints ✕s, or erases them if it started on one. */
+  private drag(cells: QCell[], first: boolean): void {
+    if (first) this.dragMark = this.game.marks[cells[0]!] === CROSS ? EMPTY : CROSS;
+    this.game.paint(cells, this.dragMark, !first);
+  }
+
+  /** Scratch on, or off — which wipes it (Keep, on the scratch bar, makes it real instead). */
+  private toggleScratch(): void {
+    sound.unlock();
+    if (this.game.solved) return;
+    if (this.sheet.isOpen) this.closeHint();
+    if (this.game.scratching) this.game.wipeScratch();
+    else this.game.beginScratch();
   }
 
   private onEvent(e: QueensEvent): void {
@@ -196,7 +264,33 @@ class QueensPlay implements Screen {
         } else if (e.mark === 0) sound.erase();
         break;
       case "marks":
-        sound.cross();
+        if (this.game.marks[e.cells[0]!] === EMPTY) sound.erase();
+        else sound.cross();
+        break;
+      case "scratch-queen": {
+        // Hypothetical: a soft pencil tick, never right or wrong — but rule clashes still show.
+        const p = this.board.center(e.cell);
+        this.board.pop(e.cell);
+        sound.note(Math.min(9, colOf(e.cell, n) + 1), true);
+        buzz("note");
+        if (e.conflicts.length) {
+          for (const q of e.conflicts) {
+            const o = this.board.center(q);
+            fx.beam(p.x, p.y, o.x, o.y, "#ffb347", 6, 0.55);
+          }
+          toast(conflictText(this.game, e.cell, e.conflicts[0]!), "info");
+        } else fx.ring(p.x, p.y, "#ffffff", this.board.cellSize() * 0.9, 0.5, 2);
+        break;
+      }
+      case "scratch":
+        if (e.on) {
+          sound.ui("toggle");
+          buzz("tap");
+        } else if (e.kept) sound.ui("select");
+        else {
+          sound.erase();
+          if (e.cells.length) this.board.sweep(e.cells, 25);
+        }
         break;
       case "queen": {
         this.last = e.cell;
@@ -291,6 +385,10 @@ class QueensPlay implements Screen {
   private openHint(): void {
     sound.unlock();
     if (this.game.solved) return;
+    if (this.game.scratching) {
+      toast("Hints read your real board: Keep or Wipe the scratch first.", "info");
+      return;
+    }
     if (this.sheet.isOpen) return this.sheet.advance();
     this.hint = this.game.hint(NAMES);
     clearToast();

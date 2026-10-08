@@ -1,6 +1,7 @@
 /**
  * Queens board: glowing colour regions with thick borders, crowns and crosses.
- * Input: tap cycles empty → ✕ → queen, long-press drops a queen, dragging crosses cells.
+ * Input: tap, double tap (a second tap on the same cell within DOUBLE_TAP_MS), long-press, drag.
+ * What each one does is the screen's call.
  */
 import { colOf, parseCellName, rowOf } from "../../engine/queens/geometry";
 import type { QueensHint } from "../../engine/queens/hints";
@@ -12,8 +13,11 @@ import { REGION_COLORS } from "../palette";
 
 export interface QueensBoardHandlers {
   onTap(c: QCell): void;
+  /** A second tap on the same cell soon after the first (which has already been reported). */
+  onDoubleTap(c: QCell): void;
   onLong(c: QCell): void;
-  onDrag(cells: QCell[]): void;
+  /** Dragging across cells: `cells` grows as the drag goes, starting with the cell it began on. */
+  onDrag(cells: QCell[], first: boolean): void;
 }
 
 export interface QueensView {
@@ -21,9 +25,13 @@ export interface QueensView {
   attacked: Uint8Array | null;
   conflicts: Set<QCell>;
   wrong: Set<QCell>;
+  /** Marks that are only a scratch (drawn sketchily), and whether a scratch is on at all. */
+  scratch?: ReadonlySet<QCell>;
+  scratching?: boolean;
 }
 
 const LONG_MS = 420;
+const DOUBLE_TAP_MS = 330;
 
 export class QueensBoard {
   readonly el: HTMLElement;
@@ -73,6 +81,7 @@ export class QueensBoard {
     let dragged: QCell[] = [];
     let longFired = false;
     let timer = 0;
+    let lastTap: { cell: QCell; at: number } | null = null;
     this.board.addEventListener("pointerdown", (e) => {
       const c = this.cellAtPoint(e.clientX, e.clientY);
       if (c === null) return;
@@ -91,13 +100,23 @@ export class QueensBoard {
       const c = this.cellAtPoint(e.clientX, e.clientY);
       if (c === null || c === start || dragged.includes(c)) return;
       clearTimeout(timer);
-      if (!dragged.length) dragged.push(start);
+      const first = !dragged.length;
+      if (first) dragged.push(start);
       dragged.push(c);
-      this.handlers.onDrag([...dragged]);
+      this.handlers.onDrag([...dragged], first);
     });
     const end = () => {
       clearTimeout(timer);
-      if (start !== null && !longFired && !dragged.length) this.handlers.onTap(start);
+      if (start !== null && !longFired && !dragged.length) {
+        const now = performance.now();
+        if (lastTap?.cell === start && now - lastTap.at <= DOUBLE_TAP_MS) {
+          lastTap = null;
+          this.handlers.onDoubleTap(start);
+        } else {
+          lastTap = { cell: start, at: now };
+          this.handlers.onTap(start);
+        }
+      } else lastTap = null;
       start = null;
       dragged = [];
     };
@@ -106,6 +125,7 @@ export class QueensBoard {
       clearTimeout(timer);
       start = null;
       dragged = [];
+      lastTap = null;
     });
     this.board.addEventListener("contextmenu", (e) => e.preventDefault());
   }
@@ -121,6 +141,7 @@ export class QueensBoard {
   }
 
   render(v: QueensView): void {
+    this.board.classList.toggle("scratching", !!v.scratching);
     for (let c = 0; c < this.cells.length; c++) {
       const el = this.cells[c]!;
       const m = v.marks[c]!;
@@ -133,6 +154,7 @@ export class QueensBoard {
       el.classList.toggle("auto-x", auto);
       el.classList.toggle("conflict", v.conflicts.has(c));
       el.classList.toggle("wrong", v.wrong.has(c));
+      el.classList.toggle("scratch", !!v.scratch?.has(c));
       const want = isQueen ? "q" : isCross || auto ? "x" : "";
       if (mark.dataset.kind !== want) {
         mark.dataset.kind = want;
@@ -141,7 +163,7 @@ export class QueensBoard {
       const region = this.puzzle.regions[c]!;
       el.setAttribute(
         "aria-label",
-        `r${rowOf(c, this.n) + 1}c${colOf(c, this.n) + 1}, ${REGION_COLORS[region % REGION_COLORS.length]!.name}${isQueen ? ", queen" : isCross ? ", crossed" : ""}`,
+        `r${rowOf(c, this.n) + 1}c${colOf(c, this.n) + 1}, ${REGION_COLORS[region % REGION_COLORS.length]!.name}${isQueen ? ", queen" : isCross ? ", crossed" : ""}${v.scratch?.has(c) ? " (scratch)" : ""}`,
       );
     }
     this.applyHint();

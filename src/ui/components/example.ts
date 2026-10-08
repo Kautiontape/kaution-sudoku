@@ -41,7 +41,7 @@ export function renderExample(ex: Examples, id: string, family: string): HTMLEle
   if (family === "queens") {
     const e = ex.queens[id]!;
     const puzzle = decodeQueens(e.puzzle);
-    const board = new QueensBoard(puzzle, { onTap: () => {}, onLong: () => {}, onDrag: () => {} });
+    const board = new QueensBoard(puzzle, { onTap: () => {}, onDoubleTap: () => {}, onLong: () => {}, onDrag: () => {} });
     board.render({ marks: Uint8Array.from(e.marks), attacked: null, conflicts: new Set(), wrong: new Set() });
     const names = { region: (i: number) => REGION_COLORS[i % REGION_COLORS.length]!.name };
     const text = stepText(e.step, puzzle, names);

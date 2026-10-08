@@ -397,7 +397,7 @@ button:disabled {
 }
 
 .play.queens {
-  --chrome: 236px;
+  --chrome: 258px;
 }
 
 .topbar {
@@ -2106,12 +2106,80 @@ body:has(.play.hint-open) .toasts {
 
 /* ---------------------------------------------------------------- queens */
 
+/* Gesture help; while scratching, the Wipe / Keep bar. Fixed height so swapping never shifts the board. */
 .qhelp {
-  margin: 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 4px;
   text-align: center;
   font-size: 12px;
   color: var(--ink-faint);
   flex: none;
+}
+
+.play.scratch-mode .qhelp {
+  color: color-mix(in srgb, var(--a2) 75%, white);
+  font-size: 12.5px;
+}
+
+.qchip {
+  height: 44px;
+  min-width: 72px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--a2) 60%, transparent);
+  background: color-mix(in srgb, var(--a2) 16%, transparent);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.qchip.keep {
+  border-color: color-mix(in srgb, var(--good) 60%, transparent);
+  background: color-mix(in srgb, var(--good) 18%, transparent);
+}
+
+.qchip:active {
+  transform: scale(0.96);
+}
+
+/* Scratch: the board glows in the second accent with a dashed edge, like sudoku's pencil mode. */
+.play.scratch-mode .qboard {
+  outline: 2px dashed color-mix(in srgb, var(--a2) 80%, white);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--a2) 60%, transparent), 0 0 40px -4px color-mix(in srgb, var(--a2) 70%, transparent), 0 24px 70px -24px rgba(0, 0, 0, 0.9);
+}
+
+.play.scratch-mode .tool.on {
+  color: var(--a2);
+}
+
+.play.scratch-mode .tool.on .icon {
+  filter: drop-shadow(0 0 6px var(--a2));
+}
+
+.play.scratch-mode .stats .notes-flag {
+  color: var(--a2);
+}
+
+/* Scratch marks look pencilled: dashed strokes over a hatched cell. */
+.qcell.scratch.queen .qmark,
+.qcell.scratch.cross .qmark {
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0 3px, transparent 3px 8px);
+}
+
+.qcell.scratch .crown {
+  stroke-dasharray: 2.6 1.9;
+  filter: drop-shadow(0 0 3px var(--a2)) drop-shadow(0 0 9px var(--a2));
+}
+
+.qcell.scratch .xmark {
+  stroke-dasharray: 3.2 2.4;
 }
 
 .qboard-wrap {

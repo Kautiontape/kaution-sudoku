@@ -43,8 +43,17 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
   digits already placed in a house the cage lives in (setting). Its **Σ45 lens** works the 45 rule
   for the selected cell's row, column or box: it writes the equation and rings the innies or
   outies on the board (the calculator's Region mode).
-- Queens: tap cycles empty → ✕ → queen; long-press drops a queen; drag across cells to ✕ many.
-  Auto-✕ (setting) shows cells ruled out by placed queens without storing them.
+- Queens: tap puts an ✕ on or takes it off; double-tap (second tap within ~⅓ s) makes a queen, as
+  one undo step; hold clears a cell; drag paints ✕s (or erases them, if the drag starts on an ✕),
+  one undo step per drag. A single tap never removes a queen (it nudges "hold to clear"), so a
+  stray tap can't cost you your place. Auto-✕ (setting) shows cells ruled out by placed queens
+  without storing them.
+- Queens **Scratch** (tool, or S): a what-if layer. Turning it on snapshots the board; queens and
+  ✕s placed after that are drawn pencilled (dashed, hatched) and count for nothing: no mistakes,
+  no right/wrong feedback (that would give the answer away), no completion. Rule clashes and
+  auto-✕ still show, which is the point of trying a queen. Undo stops at the snapshot; hints and
+  saves read the real board. **Wipe** (or switching the tool off) restores the snapshot exactly;
+  **Keep** makes the scratch real as one undo step, checked like any other move.
 - Keyboard: digits, Shift/Alt+digit for notes, arrows, Backspace, N (notes), H (hint),
   Ctrl+Z / Ctrl+Shift+Z.
 - Games autosave per mode; "Continue" on the home screen resumes.

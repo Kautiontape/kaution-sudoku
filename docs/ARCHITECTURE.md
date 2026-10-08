@@ -38,7 +38,7 @@ src/
                           # logical, grade, generate, hints, catalog, pack
   game/                   # pure TS game models (no DOM)
     sudoku-game.ts        # digits, notes, undo/redo, mistake reasons, completion events, hints
-    queens-game.ts        # marks, drag-cross, conflicts, completion events, hints
+    queens-game.ts        # marks, gestures (tap/double tap/hold/drag), scratch layer, conflicts, events, hints
     packs.ts              # fetch + decode packs, pick next unsolved
   ui/
     app.ts                # screen router, global layers, stage themes, saved games

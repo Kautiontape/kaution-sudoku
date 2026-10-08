@@ -44,6 +44,9 @@ Learn screen worked examples: a real position per technique, drawn with the hint
 Squares named in hints, examples and the Σ45 lens are colour-matched to rings on the board.
 *Deferred: install prompt UI, daily puzzle, technique mastery (new / learning / solid).*
 
+Queens input: tap ✕ on/off, double-tap queen, hold to clear, one undo step per drag; a Scratch
+layer for what-if queens that never counts and wipes back to your spot (or is kept).
+
 ## Next
 - Calculator tape UI and multi-house lens (M4).
 - Technique mastery tracking by classifying the player's own placements.

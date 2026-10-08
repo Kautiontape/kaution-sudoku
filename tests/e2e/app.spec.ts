@@ -177,25 +177,83 @@ test("killer: the first hints teach cage combinations", async ({ page }) => {
   expect(why.length).toBeGreaterThan(10);
 });
 
-test("queens: tap cycles ✕ → queen, conflicts are explained, hints solve it", async ({ page }) => {
+test("queens: tap toggles ✕, double-tap makes a queen, hold clears; clashes are explained; hints solve it", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/?play=queens-easy");
   const cells = page.locator(".qcell");
+  await expect(cells.first()).toBeVisible();
   const n = Math.round(Math.sqrt(await cells.count()));
   expect(n).toBeGreaterThanOrEqual(5);
-  await cells.nth(0).click();
-  await expect(cells.nth(0)).toHaveClass(/cross/);
-  await cells.nth(0).click();
-  await expect(cells.nth(0)).toHaveClass(/queen/);
+  const pause = () => page.waitForTimeout(450); // longer than the double-tap window
+  const a = cells.nth(0);
+  await a.click();
+  await expect(a).toHaveClass(/cross/);
+  await pause();
+  await a.click(); // a later tap takes the ✕ off again
+  await expect(a).not.toHaveClass(/cross/);
+  await pause();
+  await a.dblclick();
+  await expect(a).toHaveClass(/queen/);
+  await pause();
+  await a.click(); // a stray tap leaves a queen alone
+  await expect(a).toHaveClass(/queen/);
+  await expect(page.getByTestId("toast")).toContainText("Hold a queen");
   // A second queen in the same row clashes.
-  await cells.nth(2).click();
-  await cells.nth(2).click();
+  await cells.nth(2).dblclick();
   await expect(page.getByTestId("toast")).toContainText("row");
+  await cells.nth(2).click({ delay: 700 }); // hold clears it
+  await expect(cells.nth(2)).not.toHaveClass(/queen|cross/);
   await page.getByTestId("tool-clear").click();
   await expect(page.locator(".qcell.queen")).toHaveCount(0);
   await page.screenshot({ path: "test-results/screens/queens.png" });
   await solveWithHints(page, 120);
   await expect(page.locator(".qcell.queen")).toHaveCount(n);
+});
+
+test("queens: scratch tries queens and ✕s without counting, then wipes back to your spot or keeps it", async ({ page }) => {
+  await page.goto("/?play=queens-easy");
+  const cells = page.locator(".qcell");
+  await expect(cells.first()).toBeVisible();
+  const n = Math.round(Math.sqrt(await cells.count()));
+  const real = cells.nth(n + 3);
+  await real.click(); // a real ✕ to come back to
+  await expect(real).toHaveClass(/cross/);
+  await page.getByTestId("tool-scratch").click();
+  await expect(page.locator(".play.scratch-mode")).toHaveCount(1);
+  await expect(page.getByTestId("tool-scratch")).toContainText("Scratch on");
+  // Two touching queens: they clash and at least one is wrong, yet none of it counts.
+  await cells.nth(0).dblclick();
+  await page.waitForTimeout(450);
+  await cells.nth(1).dblclick();
+  await expect(page.locator(".qcell.queen.scratch")).toHaveCount(2);
+  await expect(page.locator(".qcell.wrong")).toHaveCount(0);
+  await expect(page.locator(".stats")).toContainText("Mistakes 0");
+  await page.screenshot({ path: "test-results/screens/queens-scratch.png" });
+  // Hints wait until the scratch is kept or wiped.
+  await page.getByTestId("tool-hint").click();
+  await expect(page.getByTestId("toast")).toContainText("Keep or Wipe");
+  await expect(page.getByTestId("hint-sheet")).not.toHaveClass(/open/);
+  // Wipe: back exactly where you were.
+  await page.getByTestId("scratch-wipe").click();
+  await expect(page.locator(".play.scratch-mode")).toHaveCount(0);
+  await expect(page.locator(".qcell.queen")).toHaveCount(0);
+  await expect(real).toHaveClass(/cross/);
+  // Keep: the scratch becomes real.
+  const kept = cells.nth(2 * n + 4);
+  await page.getByTestId("tool-scratch").click();
+  await kept.click();
+  await expect(kept).toHaveClass(/scratch/);
+  await page.getByTestId("scratch-keep").click();
+  await expect(kept).toHaveClass(/cross/);
+  await expect(kept).not.toHaveClass(/scratch/);
+  // Switching the tool off wipes too.
+  const tried = cells.nth(2 * n + 5);
+  await page.getByTestId("tool-scratch").click();
+  await tried.click();
+  await expect(tried).toHaveClass(/cross/);
+  await page.getByTestId("tool-scratch").click();
+  await expect(tried).not.toHaveClass(/cross/);
+  await expect(kept).toHaveClass(/cross/);
 });
 
 test("queens: squares named in a hint take their region's colour and light up", async ({ page }) => {
