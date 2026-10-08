@@ -1,119 +1,142 @@
 # Cage Coach — Product Spec
 
-A killer sudoku app that teaches instead of tells. Hints climb a ladder from "look here" to "here's the answer," a sum calculator lives on the board, and puzzles are selected for interesting solve paths rather than dumped at random.
+Puzzles that teach instead of tell. Three puzzle types, one coach: hints climb a ladder from
+"look here" to "here's the answer", every hint is a human-style deduction with its reasoning drawn
+on the board, and the whole thing feels like Tetris Effect — calm, luminous, and punctuated by
+light and sound when things click.
 
-Target: installable PWA, Android-first (phone portrait), works offline. Desktop browser is a bonus.
+Target: installable PWA, Android-first (phone portrait), works offline. Desktop browser works too
+(keyboard supported).
 
 ---
 
-## 1. Core play
+## 1. Modes
 
-- 9×9 killer: cages with sum clues, no givens required (some puzzles may have a few).
-- Rules: rows/cols/boxes contain 1–9 once; cage cells sum to the clue; **no repeated digit inside a cage**.
-- Input: tap cell → tap digit. Toggle pencil mode. Long-press digit = pencil without toggling.
-- Multi-select cells (drag) for bulk pencil marks.
-- Undo/redo, unlimited.
-- Auto-remove pencil marks when a digit is placed in the same row/col/box/**cage**.
-- Highlight: same digit, peers of the selected cell, and the selected cell's cage.
+### Classic sudoku
+9×9, givens, rows/cols/boxes contain 1–9 once.
+
+### Killer sudoku
+Cages with sum clues, normally no givens. Rows/cols/boxes contain 1–9 once; cage cells sum to the
+clue; **no repeated digit inside a cage**.
+
+### Queens (colour regions)
+N×N board (6–10) split into N coloured regions. Place N queens: exactly one per row, column and
+region; no two queens touch, not even diagonally (they *may* share a long diagonal — this is the
+LinkedIn "Queens" puzzle, not classic 8-queens).
+
+### Difficulty
+Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logical solver needs
+(see §4). Queens board size grows with difficulty (Easy 6–7, Medium 8, Hard 9, Expert 9–10).
+
+---
+
+## 2. Core play
+
+- Sudoku: tap cell → tap digit. Notes mode toggle; **long-press a digit = pencil without toggling**.
+  Erase, undo/redo (unlimited), auto-notes (killer auto-notes respect cage sums).
+- Placing a digit auto-removes it from notes in the same row/col/box/**cage** (setting).
+- Highlights: selected cell, its peers, its cage, every cell with the same digit, matching notes.
+- Digit pad shows how many of each digit remain; finished digits dim.
+- Killer: a cage bar lists the selected cage's combinations, striking out ones that clash with
+  digits already placed in a house the cage lives in (setting).
+- Queens: tap cycles empty → ✕ → queen; long-press drops a queen; drag across cells to ✕ many.
+  Auto-✕ (setting) shows cells ruled out by placed queens without storing them.
+- Keyboard: digits, Shift/Alt+digit for notes, arrows, Backspace, N (notes), H (hint),
+  Ctrl+Z / Ctrl+Shift+Z.
+- Games autosave per mode; "Continue" on the home screen resumes.
 
 ### Mistakes that teach
-When a placement is wrong, don't just bump a counter. Say *why* it's wrong when a rule makes it provably wrong right now:
-- "That cage already has a 7." (the bug that cost a mistake on 2026-10-07)
-- "Row 6 already has a 5."
-- "This 3-cell cage sums to 6, so it can only be {1,2,3}."
-
-If it's only wrong against the solution (not provably wrong yet), say "That doesn't match the solution" and offer the hint ladder for that cell. Mistake limit is optional (off by default).
+With instant checking on (default), a wrong digit is flagged and explained when a rule makes it
+provably wrong right now:
+- "Row 6 already has a 5." / "Column 2 …" / "The top-left box …"
+- "That cage already has a 7."
+- "This 3-cell cage sums to 6, so it can only be 1+2+3 — no 9."
+Otherwise: "That doesn't match the solution. Hint can show you why."
+Queens: rule clashes are explained ("Queens can't touch — not even diagonally."); a queen off the
+solution is flagged with a pointer to the hint.
 
 ---
 
-## 2. Hint ladder
+## 3. Hint ladder
 
-Every hint comes from one logical step the solver found. The player climbs one rung per tap; each rung costs a little more (for stats, not for punishment).
+Every hint is one step the logical solver found from the player's **current** position, using the
+player's notes as their candidate record where they exist (so elimination-only steps persist — the
+"do" rung writes them into notes) and basic candidates elsewhere.
 
-| Rung | Shows | Example |
+Before any step, the hint checks, in order:
+1. **Wrong digits / queens** → "Something's off in the top-left box." … "Clear r3c4."
+2. **Notes that exclude the answer** (or ✕s on a queen's cell) → "One of your notes rules out the
+   real answer." … "Reset the notes in r6c2." (Never reveals the digit.)
+3. **The easiest logical step** (tiered registry, easiest first).
+4. If nothing applies (shouldn't happen with the packs): offer to reveal one cell.
+
+| Rung | Shows | Board |
 |---|---|---|
-| 0 — Notes audit | Whether any of your pencil marks are impossible (count + region, not which) | "One of your notes in row 6 can't be right." |
-| 1 — Where | Region highlight, no technique | "Look at the top-left box." |
-| 2 — What | Technique name + a one-line nudge | "45 rule: the cages here nearly fill the box." |
-| 3 — Why | Full reasoning with cells/cages highlighted, and arithmetic shown | "Cages 12 + 21 + given 3 = 36, leaving r3c2 + r3c3 = 9 …" |
-| 4 — Do | Applies the step (placement or eliminations) | Places the digit / removes candidates |
+| 1 Where | which area to look at, no technique named | area tinted, rest dimmed |
+| 2 What | technique name + one-line nudge, tier badge | pattern cells outlined, cages lit |
+| 3 Why | full reasoning with cells, digits and arithmetic | candidates coloured by role, sight lines from justifying digits, chain arrows, dashed virtual cages |
+| 4 Do | applies the step (placements, or eliminations written into notes) | normal feedback |
 
-Rules:
-- Rung 0 runs first only if the audit finds a problem. Bad notes were the #1 reason the player got stuck; fixing them often unblocks without any further hint.
-- A rung-0 follow-up tap reveals the exact bad mark(s).
-- Hints always pick the **easiest** available step, not the next placement in reading order.
-- Hints are generated from the player's current state, using true candidates (not the player's notes), but phrased relative to what's on the board.
-- Hint text is templated per technique. No LLM in the hint path. (Optional later: LLM rephrasing of a structured step for a friendlier voice, offline-fallback to templates.)
+Hint text is generated from structured `Step.explain` data via per-technique templates (no LLM,
+no prose in techniques). "Learn" on the sheet opens that technique's guide.
 
-### Technique tracking
-Record which technique each hint used and whether the player later applied that technique unaided (the solver can classify the player's own placements by the easiest technique that justifies them). Show per-technique status: new / learning / solid.
-
----
-
-## 3. Sum calculator ("the tape")
-
-A slide-up panel with a running expression the player builds by tapping things.
-
-### Tape mode (manual)
-- Buttons: `45`, `+`, `−`, `=`, `⌫`, `C`, and a digit pad for literals.
-- **Tap the board to insert a term:**
-  - Tap a cage's sum label → inserts that cage (`[cage 12]`, value = clue).
-  - Tap a filled cell → inserts its value (`r3c4=4`).
-  - Tap an empty cell → inserts a **symbol** (`r3c2`). Subtracted symbols are "what's left over", so the tape reads as `… = 0` and is shown solved for the cells.
-- Live result:
-  - All numeric → a number. `45 − 8 − 12 = 25`.
-  - With symbols: `45 − [12] − [21] − 3 − r3c2 − r3c3` → shows `r3c2 + r3c3 = 9`. Added cells (outies) land on the right: `r6c7 = 8 + r5c9`.
-- Tapping an operator after the term flips its sign; tap a term chip to remove it.
-- Example from the request: `45 − 8 − [12] + …`.
-
-### Region mode (smart 45)
-- Tap a row/col/box (or select any set of whole rows/cols/boxes; multiples of 45).
-- The calculator auto-fills: `45·n − (cages fully inside) − (placed digits)` and lists the **innies** (cells in the region whose cage leaks out) and **outies** (cells outside the region whose cage leaks in).
-- Shows the resulting equation, e.g. `r3c2 + r3c3 = 9` or `r6c7 = 7`.
-- This is the main teaching tool for the technique the player kept missing.
-
-### Combination helper
-- With a cage selected: list every valid combo for its sum and size, crossing out combos ruled out by placed digits and current true candidates. Shows "must contain" and "can't contain" digits.
-- Works on the tape result too: an equation `r3c2 + r3c3 = 9` gets the same combo list (as a 2-cell sum, repeats allowed only if cells don't share a house).
-
-### Virtual cages
-- "Pin" a tape/region result as a virtual cage (dashed outline in a different color). Virtual cages participate in combo helper and in the solver's hint logic for this game.
+### Technique coverage
+- **Sudoku (classic + killer):** full house, hidden/naked singles, pointing, box/line reduction,
+  naked/hidden pairs–quads, X-Wing, Swordfish, Jellyfish, finned fish, Skyscraper, 2-String Kite,
+  Empty Rectangle, XY-Wing, XYZ-Wing, W-Wing, Simple Colouring, Unique Rectangle, BUG+1 (classic
+  only), X-Chain, XY-Chain, AIC.
+- **Killer:** cage remainder, cage combinations (by sum; against candidates), cage pointing, cage
+  claim, 45 rule (innies & outies over 1–4 houses, with virtual cages).
+- **Queens:** last cell, region-in-line, line-in-region, touch (blocking), k-confinement,
+  contradiction (short forcing chain).
 
 ---
 
-## 4. Puzzle library
+## 4. Puzzles
 
-- Generated offline by a script, shipped as a JSON pack, more packs downloadable later.
-- Each puzzle stores: cages, solution, difficulty score, list of techniques required, the "break-in" technique, and a seed.
-- Difficulty = hardest technique required, then step count at that tier as a tiebreaker.
-- **Interesting filter** (reject a puzzle if):
-  - It falls to singles + cage combos alone for the first 30+ placements at Hard/Expert.
-  - It has no break-in deduction (the first progress isn't a 45-rule / combo / interaction step).
-  - It needs a technique above its tier more than once.
-  - Cage shapes are degenerate (too many 1-cell cages, a cage > 6 cells at low tiers, etc.).
-- **Training packs:** puzzles chosen because they require a specific technique (e.g. "Innies/outies drill").
-- Daily puzzle: deterministic by date from the pack.
+- Generated offline into JSON packs (`npm run gen`), shipped with the app; deterministic per seed.
+- Every pack puzzle is **solvable start to finish by the hint engine's techniques**, so a hint is
+  always available.
+- Grading: hardest tier needed. Classic: tier 1 easy (singles), 2 medium, 3 hard, 4–5 expert.
+  Killer: ≤ tier 2 easy, single-house 45s medium, multi-house 45s / tier-3 techniques hard,
+  tier 4–5 expert. Queens: tier 1–2 easy … tier 5 (contradiction) expert.
+- Next puzzle = first unsolved in pack order; packs cycle when exhausted.
 
 ---
 
-## 5. Stats
+## 5. Feel (Tetris Effect direction)
 
-Time, hints used per rung, mistakes, techniques applied unaided. No accounts, everything local. Optional export/import JSON.
+- Each mode is a "stage" with its own palette: Classic *Abyss* (cyan/azure/violet), Killer *Ember*
+  (magenta/orange/gold), Queens *Aurora* (mint/sky/lilac); home uses a prism mix.
+- Digits 1–9 keep fixed neon hues everywhere.
+- Background: slow nebula that brightens as the puzzle fills and blooms where you play.
+- Placement: digit pops, sparks + shockwave in its colour, a bell note in the current chord, haptic.
+- Completion: light sweeps across the house, beams and streaks, ROW / COLUMN / BOX / CAGE / ALL 7s
+  callouts; simultaneous completions escalate to DOUBLE / TRIPLE / QUAD with bigger sound.
+- Solve: wave of light from the last cell, fireworks, SOLVED / PERFECT, musical resolution, win card.
+- Mistake: shake, red sparks, muted thud, explanation toast.
+- Sound: generative ambient bed per theme; every effect is quantised to the current chord.
+- Settings: Calm / Vivid / Epic effects, sound, music, haptics; `prefers-reduced-motion` honoured.
 
 ---
 
-## 6. Non-goals (v1)
+## 6. Stats & storage
 
-- Classic sudoku, other variants (killer-X, jigsaw). Architecture should not block them.
-- Accounts, cloud sync, leaderboards, ads, in-app purchases.
-- Camera import of puzzles from other apps.
+Per mode-difficulty: solved ids, best time; total solves; daily streak; per-technique hint counts
+(shown on the Learn screen). Everything is local (localStorage), no accounts.
 
 ---
 
-## 7. Ideas parking lot
+## 7. Non-goals (for now)
 
-- Scan-a-screenshot import (OCR the cage outlines) — would let the coach work on puzzles from other apps.
-- "Explain my mistake" replay: rewind to the last state where the wrong digit was still possible and show what killed it.
-- Cage-sum heatmap toggle: shade cages by how constrained they are (number of combos).
-- Haptics on placement, Material You color theming on Android.
-- Self-hostable puzzle pack server (static JSON on a homelab box).
+Accounts, cloud sync, leaderboards, ads, purchases; variant sudokus beyond classic/killer;
+camera import.
+
+## 8. Ideas parking lot
+
+- **Sum calculator ("the tape")** for killer — the engine (`calc.ts`, `region.ts`) exists; the
+  slide-up UI with Region mode and pinned virtual cages is the next big teaching feature.
+- Worked examples on the Learn screen (a real board position per technique).
+- Technique mastery tracking (new / learning / solid) by classifying the player's own placements.
+- "Explain my mistake" replay; daily puzzle; training packs per technique.
+- Beat-quantised placements (more musical, less immediate) as an option.

@@ -12,7 +12,9 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run build",
-    "gen": "tsx scripts/generate-pack.ts"
+    "gen": "tsx scripts/generate-pack.ts",
+    "audio-check": "tsx scripts/audio-check.ts",
+    "queens-stats": "tsx scripts/queens-stats.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

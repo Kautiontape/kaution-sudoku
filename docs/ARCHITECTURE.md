@@ -1,83 +1,113 @@
 # Architecture
 
-## Stack decision: web (TypeScript), not Godot
+## Stack
 
-| | Web (TS + Vite) | Godot (GDScript/C#) |
-|---|---|---|
-| Android delivery | PWA, installable, no store needed | APK export, sideload or Play |
-| Testing | Vitest (unit/property) + Playwright (e2e, mobile viewport) — both headless, fast, CI-friendly | GUT/gdUnit4 work, but slower loop and weaker headless UI testing |
-| Engine reuse | Same TS engine runs in browser, Node generator scripts, Web Worker | Generator would be a separate project or a headless Godot run |
-| Claude Code ergonomics | Excellent: `npm test` gives a tight feedback loop | Usable, but more friction (scene files, editor-only state) |
-| What the app actually is | A grid, panels, text. No physics, no animation-heavy scenes | Godot's strengths go unused |
+TypeScript + Vite, vanilla DOM (no framework), Canvas 2D for effects, Web Audio for sound.
+Vitest for the engine and game models, Playwright (Pixel 7 viewport) for end-to-end flows.
 
-Web wins. If a native APK is wanted later, wrap the PWA with Capacitor or a TWA.
+Why web over a game engine: the app is a grid, panels and text plus a light-show layer. A PWA
+installs on Android without a store, the same TS engine runs in the browser and in Node (pack
+generation, tests), and the test loop is fast. The effects that make it feel like Tetris Effect —
+additive particles, a blurred nebula, synthesized music — are cheap in Canvas 2D and Web Audio.
 
 ## Layout
 
 ```
 src/
-  engine/              # pure TS, no DOM. 100% unit-tested.
-    types.ts           # Puzzle, Cage, Cell, Grid, Candidates, Step
-    geometry.ts        # rows/cols/boxes, peers, house membership
-    combos.ts          # cage combination tables  ✅ implemented
-    calc.ts            # calculator tape model    ✅ implemented
-    validate.ts        # puzzle/solution validation ✅ implemented
-    candidates.ts      # true candidate computation from a state
-    exact.ts           # exact solver (DLX or bitmask backtracking) — counts solutions, for uniqueness
-    logical.ts         # human-style solver: loop over techniques by tier, return Step[]
-    techniques/        # one file per technique, each: find(state) → Step | null
-    hints.ts           # Step → HintLadder (rungs 1–4 text + highlights)
-    audit.ts           # player notes vs true candidates
-    region.ts          # 45-rule region analysis (innies/outies) — shared by calculator + techniques
-    generate.ts        # solved grid + cage partition + uniqueness loop
-    grade.ts           # run logical solver, compute difficulty + "interesting" filter
-  ui/                  # rendering + input; thin, calls engine
+  engine/                 # pure TS, no DOM — runs in Node and the browser
+    types.ts              # Puzzle (classic|killer), Cage, Step (+ candidate marks, chain links)
+    geometry.ts           # rows/cols/boxes, flat house ids, peers, user-facing names
+    combos.ts             # cage combination tables + bit helpers
+    candidates.ts         # basic candidates, cage support via matching, sum support
+    exact.ts              # exact solver (count / solve) for classic + killer
+    state.ts              # SolverState (grid + candidate bitmasks) and step application
+    logical.ts            # easiest-first technique loop (nextStep / solveLogically)
+    techniques/           # one technique per export; registry in index.ts sorted by rating
+      singles.ts intersections.ts subsets.ts killer.ts innies.ts advanced.ts (+ fish, wings, …)
+    region.ts             # 45-rule analysis (innies/outies) — shared by technique + calculator
+    calc.ts               # calculator tape engine (UI not built yet)
+    grade.ts              # difficulty from a solve path
+    generate.ts           # solved grids, symmetric digging, cage partition, uniqueness repair
+    puzzles.ts            # difficulty-targeted classic + killer generation
+    pack.ts               # compact pack JSON
+    catalog.ts            # Learn-screen technique guide (+ catalog-advanced.ts)
+    hints/                # format helpers, per-technique templates, sudokuHint() ladder
+    hint-types.ts         # mode-independent ladder + TechniqueInfo types
+    rng.ts                # seeded PRNG (mulberry32) — all engine randomness
+    queens/               # the Queens engine: types, geometry, exact, state, techniques,
+                          # logical, grade, generate, hints, catalog, pack
+  game/                   # pure TS game models (no DOM)
+    sudoku-game.ts        # digits, notes, undo/redo, mistake reasons, completion events, hints
+    queens-game.ts        # marks, drag-cross, conflicts, completion events, hints
+    packs.ts              # fetch + decode packs, pick next unsolved
+  ui/
+    app.ts                # screen router, global layers, stage themes, saved games
+    screens/              # home, sudoku-play, queens-play, learn, settings-sheet, win
+    components/           # sudoku-board (+ cage-paths), queens-board, numpad, hint-sheet, toast
+    fx/                   # background (nebula), particles (FX canvas), callout
+    audio/                # synth.ts (engine), theory.ts (themes/harmony), dsp.ts (IR, noise)
+    sound.ts              # façade the UI calls; silent until the synth is connected
+    palette.ts settings.ts store.ts haptics.ts icons.ts messages.ts dom.ts style.css
   main.ts
+public/
+  packs/                  # generated puzzle packs
+  sw.js manifest.webmanifest icons/
 scripts/
-  generate-pack.ts     # node script: generate N puzzles, grade, filter, write public/packs/*.json
+  generate-pack.ts        # parallel pack generator (child processes)
+  queens-stats.ts         # queens generator report
+  audio-check.ts          # renders the synth offline in Chromium and checks levels
 tests/
-  engine/*.test.ts     # Vitest
-  e2e/*.spec.ts        # Playwright, Pixel-sized viewport
-  fixtures/            # puzzle JSON fixtures
+  engine/ game/ ui/       # Vitest
+  e2e/                    # Playwright
 ```
 
-## Key types (see `src/engine/types.ts`)
+## Engine
 
-- `CellId` = 0..80, row-major. `r = Math.floor(id/9)`, `c = id % 9`. Display as `r{1-9}c{1-9}`.
-- `Cage { id, sum, cells: CellId[] }`
-- `Puzzle { id, cages, givens?, solution?, meta? }`
-- Candidates are a `Uint16Array(81)` bitmask (bit 1..9). Fast and trivially cloneable.
-- `Step { technique, tier, placements, eliminations, focus: { cells, cages, houses }, explain: StructuredReason }`
-  - `explain` is data (numbers, cell ids, cage ids), never prose. `hints.ts` turns it into text. This keeps hint text testable and localizable, and makes LLM rephrasing optional and safe.
+- `CellId` 0..80 row-major; user-facing names `r{row}c{col}` (1-based). Houses have flat ids
+  0..26 (rows, cols, boxes). Candidates are `Uint16Array(81)` bitmasks (bits 1–9).
+- **Exact solver** — bitmask backtracking, minimum-remaining-values, hidden-single forcing, and
+  cage pruning (a cell may only take digits that appear in a combination completing its cage).
+  Used for uniqueness and validation, never for hints.
+- **Logical solver** — asks techniques in rating order, applies the first step found, repeats.
+  Every step is a sound deduction. Techniques flag `killerOnly`, `classicOnly` and
+  `assumesUnique` (unique rectangles, BUG+1); the latter are excluded when a solve is used as a
+  uniqueness proof.
+- **Steps** carry structured `explain` data, `focus` (where to look), `marks` (candidate roles:
+  place / elim / key / alt / on / off / digit), `links` (chain arrows), `sources` (digits that
+  justify a single) and `virtualCages` (45-rule cages). Templates in `hints/` turn `explain` into
+  the four rung texts; the board turns the rest into visuals.
+- **Hint state** = basic candidates narrowed by the player's notes where they have any. So an
+  elimination-only step is "remembered" once applied (it's written into notes), and hints always
+  reason about what the player can see.
 
-## Solver design
+### Generation
+- Classic: random solved grid → dig 180°-symmetric pairs while the exact solver says unique →
+  logical solve → keep when the grade matches the target difficulty.
+- Killer: random solved grid → grow cages (no repeated digit; size mix per difficulty) →
+  logical solve with no uniqueness-assuming techniques. A complete solve *proves* uniqueness.
+  If the solver gets stuck, split the stuck cage with the most open candidates and retry. This is
+  far faster than exact counting on loose layouts (which can take millions of nodes), and it
+  guarantees every killer puzzle is hintable end to end. Single-cell cages are capped per
+  difficulty.
+- Queens: random valid queen placement → grow regions from the queens with per-difficulty region
+  styles → exact uniqueness repair → logical grade.
 
-- **Exact solver** answers "how many solutions (stop at 2)?". Used by the generator and by validation. Bitmask backtracking with cage-sum pruning (min/max remaining sum) is plenty fast for 9×9.
-- **Logical solver** repeatedly asks each technique, in tier order, for a step; applies the first one; repeats. Output is the full `Step[]` path. Used for grading, hints, and classifying the player's own moves.
-- Techniques are pure and individually tested with hand-built fixtures (`tests/fixtures/techniques/*.json`): a state, the expected step.
+## UI
 
-### Technique tiers (initial)
-
-| Tier | Techniques |
-|---|---|
-| 1 | Naked single, hidden single, single-combo cage (e.g. 2-cell 17 = {8,9}), cage-complete (last cell of a cage) |
-| 2 | Cage combo elimination (digits not in any valid combo), cage no-repeat elimination, must-contain digit locked in a house (cage/house pointing) |
-| 3 | 45 rule: innies/outies for single houses (1 leftover cell or 2-cell sum) |
-| 4 | Naked/hidden pairs & triples, 45 rule across 2–3 houses, combo-vs-house intersection |
-| 5 | Cage splitting / hidden (virtual) cages, X-wing, larger innie/outie sets |
-
-`region.ts` does the 45-rule math once; the technique and the calculator's Region mode both call it, so what the hint says and what the calculator shows can never disagree.
-
-## Generator
-
-1. Random solved grid (shuffle a base pattern: permute digits, rows within bands, bands, cols within stacks, stacks, transpose). Seeded PRNG.
-2. Random cage partition: grow cages from random seeds to target sizes (weighted 2–5 cells), never allowing a repeated digit inside a cage.
-3. Uniqueness: exact solver count. If >1 solution, find a cell where solutions differ and merge/split a cage near it; retry. Cap attempts, discard on failure.
-4. Grade with the logical solver. Discard if unsolvable by implemented techniques (record that — it's a signal to add a technique) or if the "interesting" filter rejects it.
-5. Emit pack JSON.
-
-All randomness goes through a seeded PRNG so every puzzle is reproducible from its seed.
+- Screens are plain objects `{ el, destroy() }` mounted by `App`. `App.play` destroys the current
+  screen *before* building the next so a stale autosave can't overwrite a new game.
+- Game models emit events (`place`, `complete`, `solved`, …); play screens translate events into
+  board animations, particles, callouts, sound and haptics. Models never touch the DOM.
+- The sudoku board is DOM cells (crisp text, accessible `gridcell`s) under an SVG overlay
+  (grid lines, cage outlines traced from cell boundaries and inset at corners, tints, hint
+  layer). Killer cage outlines are closed polygons so they can be animated (light runs around a
+  completed cage).
+- Effects: a low-resolution nebula canvas stretched by CSS (free blur, cheap on phones) and a
+  full-screen additive particle canvas using pre-rendered glow sprites (no `shadowBlur`); the
+  particle loop sleeps when idle. Effects level scales particle counts and disables ambient motion.
+- Sound: see the design notes at the top of `src/ui/audio/synth.ts`.
 
 ## Performance
 
-Engine runs in a Web Worker in the app, so hint search never blocks the UI. Target: hint in < 50 ms on a mid-range phone; generator ≥ 20 graded puzzles/sec in Node.
+Hints run synchronously on the main thread; the logical solver's step search is milliseconds on
+typical positions. Pack generation runs in Node across CPU cores.

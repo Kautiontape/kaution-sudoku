@@ -1,36 +1,53 @@
 # Cage Coach
 
-Killer sudoku that teaches: a 4-rung hint ladder, an on-board sum calculator, a notes audit, and puzzles graded by the techniques they actually require.
+Sudoku, Killer Sudoku and Queens — with a coach that teaches every technique, wrapped in a
+Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, built for phones.
 
-- What it does: `docs/SPEC.md`
-- How it's built: `docs/ARCHITECTURE.md`
-- Build order: `docs/MILESTONES.md`
-- Rules for Claude Code: `CLAUDE.md`
+- **Three puzzles.** Classic sudoku, killer (cage sums, no givens), and the colour-region
+  *Queens* puzzle (one queen per row, column and colour; queens never touch).
+- **A coach, not an answer key.** Every hint is one logical step from your current position,
+  revealed one rung at a time — *where* → *what* (technique) → *why* (full reasoning, drawn on the
+  board) → *do*. Before any step it checks for wrong digits and for notes that rule out the real
+  answer. Hints never guess: every puzzle in the packs is solvable start to finish by the same
+  techniques the hints use.
+- **SudokuWiki-style visuals.** Candidates coloured by role (placed, eliminated, pattern, chain
+  colours), sight lines from the digits that justify a single, chain arrows, dashed 45-rule cages.
+- **Learn screen.** Rules plus every technique the hint engine knows, grouped by tier: how to spot
+  it, why it works, tips, and how often hints have shown it to you.
+- **Mistakes that teach.** "Row 6 already has a 5." "That cage already has a 7." "This 3-cell cage
+  sums to 6, so it can only be 1+2+3 — no 9."
+- **Feel.** A slow aurora that blooms where you play; sparks in each digit's colour; light sweeping
+  across completed rows, columns, boxes and cages; ROW / DOUBLE / TRIPLE callouts; a solve finale.
+  Generative ambient music where every placement plays a note quantised to the current chord.
+  Haptics on Android. Effects levels (Calm / Vivid / Epic) and reduced-motion support.
 
 ## Setup
 
 ```bash
 npm install
-npx playwright install chromium
 npm run check        # typecheck + unit tests + build
-npm run test:e2e     # mobile-viewport browser tests
-npm run dev          # http://localhost:5173
+npm run test:e2e     # Playwright, Pixel 7 viewport (set PW_CHROMIUM_PATH to reuse a local Chromium)
+npm run dev          # http://localhost:5173  (?play=killer-medium jumps straight into a game)
 ```
 
-## Kicking off with Claude Code
+### Puzzle packs
 
-From the repo root:
+Packs live in `public/packs/{classic,killer,queens}-{easy,medium,hard,expert}.json` and are
+generated offline, deterministically per seed:
 
+```bash
+npm run gen -- --mode all --count 60          # everything
+npm run gen -- --mode killer --difficulty hard --count 60 --seed 1
 ```
-claude
-```
 
-Then:
+Classic puzzles are dug from a random grid while the exact solver confirms uniqueness, then graded
+by the hardest technique the logical solver needs. Killer puzzles use a full logical solve as the
+uniqueness proof: when the solver gets stuck, the loosest stuck cage is split and the solve reruns.
+Queens puzzles grow colour regions around a valid queen placement and repair until unique.
 
-> Read CLAUDE.md and the docs. Implement milestone M1 test-first. Stop when `npm run check` is green and the milestone is ticked, and summarize what you deferred.
+## Docs
 
-Repeat per milestone. M3 and M4 are UI-heavy; ask for Playwright tests on the mobile viewport and screenshots in `test-results/` to review on your phone.
-
-## Status
-
-M0 done: tooling, cage-combo tables, calculator tape engine (incl. symbolic 45-rule equations), puzzle/solution validation, placeholder board, 22 unit tests + 1 e2e test.
+- What it does: `docs/SPEC.md`
+- How it's built: `docs/ARCHITECTURE.md`
+- Status and next steps: `docs/MILESTONES.md`
+- Rules for Claude Code: `CLAUDE.md`

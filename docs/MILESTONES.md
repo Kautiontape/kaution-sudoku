@@ -1,52 +1,46 @@
 # Milestones
 
-Each milestone ends with `npm run check` green (typecheck + lint-free build + all tests). Don't start the next one until the current one is green and committed.
+Each milestone ends with `npm run check` green (typecheck + unit tests + build) and, for UI work,
+`npm run test:e2e` green.
 
-## M0 — Scaffold ✅ (done — generator script is a stub until M2)
-- Vite + TS + Vitest + Playwright configured.
-- `types.ts`, `geometry.ts`, `combos.ts`, `calc.ts`, `validate.ts` implemented with tests.
-- Placeholder UI that renders an empty 9×9 grid; one Playwright smoke test.
+## M0 — Scaffold ✅
+Vite + TS + Vitest + Playwright; combo tables, calculator tape engine, validation.
 
-## M1 — Exact solver + candidates
-- `candidates.ts`: true candidates from (puzzle, placed digits), honoring row/col/box/cage-no-repeat and cage-combo feasibility.
-- `exact.ts`: `countSolutions(puzzle, limit=2)` and `solve(puzzle)`.
-- Tests: `tests/fixtures/patterned.json` is deliberately NOT unique, so `countSolutions` must return 2 and `solve` must return a valid solution; add a unique-solution fixture (hand-entered from a known puzzle, or the first M2 output) and check it solves to its stored solution; property test: for 50 random seeded generated grids, any cage layout derived from the solution yields that solution among its solutions.
+## M1 — Exact solver + candidates ✅
+`candidates.ts`, `exact.ts` (MRV + hidden-single forcing + cage pruning); patterned fixture counts
+2 solutions; Wikipedia puzzle solves uniquely; layouts derived from a solution admit it.
 
-## M2 — Generator v0
-- Seeded PRNG (`mulberry32` or similar), solved-grid shuffler, cage partitioner, uniqueness loop.
-- `scripts/generate-pack.ts --count 50 --seed 1 --out public/packs/dev.json`.
-- Tests: same seed → identical puzzle; every emitted puzzle passes `validatePuzzle` and has exactly one solution.
+## M2 — Generators ✅
+Seeded PRNG, random solved grids, symmetric classic digging, killer cage partition with
+logical-proof uniqueness and cage-splitting repair, Queens generator; parallel pack script.
 
-## M3 — Playable board
-- Render cages (dashed outlines, sum labels top-left), digits, pencil marks.
-- Input: select, place, pencil toggle, long-press pencil, undo/redo, auto-clear peers' notes (incl. cage peers).
-- "Why it's wrong" messages for provable rule breaks (cage already has digit, house already has digit).
-- Load puzzles from `public/packs/dev.json`.
-- Playwright: place digits by tapping, verify undo, verify cage-duplicate error message, at 412×915 (Pixel-ish).
+## M3 — Playable boards ✅
+Sudoku (classic + killer) and Queens boards, notes, long-press pencil, undo/redo, auto-clear notes
+(incl. cage peers), "why it's wrong" messages, autosave/resume, keyboard. *Deferred: drag
+multi-select for bulk notes on the sudoku board.*
 
-## M4 — Calculator
-- Tape mode wired to `calc.ts`: buttons, tap cage label / filled cell / empty cell to insert terms, live result incl. symbolic form.
-- Region mode via `region.ts`: select houses → auto equation with innies/outies.
-- Combination helper for selected cage and for tape equations.
-- Pin result as virtual cage.
-- Playwright: reproduce `45 − [12] − [21] − 3 = r3c2 + r3c3 = 9` by taps on a fixture.
+## M4 — Calculator ⏳ (engine only)
+`calc.ts` tape engine and `region.ts` exist and are tested; the cage bar shows combinations for the
+selected cage. *Deferred: the slide-up tape UI, Region mode, pinned virtual cages.*
 
-## M5 — Logical solver tiers 1–3 + hints
-- `techniques/` tier 1–3, `logical.ts`, `hints.ts`, `audit.ts`.
-- Hint ladder UI (rungs 0–4).
-- Tests per technique with fixtures; ladder text snapshot tests; audit flags a planted impossible note.
-- Golden test: logical solver fully solves a set of tier-≤3 fixtures, and every step's placements match the solution.
+## M5 — Logical solver + hints ✅
+Technique registry tiers 1–5 (sudoku, killer, queens), hint ladder with mistake and notes checks,
+templates for every technique, SudokuWiki-style board visuals, Learn screen.
 
-## M6 — Grading + interesting filter + real packs
-- `grade.ts`, filter rules from SPEC §4. Generate Easy/Medium/Hard packs (200 each).
-- Report script: distribution of hardest technique, rejection reasons, % unsolvable-by-implemented-techniques.
+## M6 — Grading + packs ✅
+Difficulty grading per mode; packs for every mode × difficulty. *Deferred: the full "interesting"
+filter from the original spec (break-in requirements, early-singles rejection).*
 
-## M7 — Tiers 4–5, Expert pack
-- Remaining techniques until ≥ 95% of generated Expert candidates are logically solvable.
-- Expert pack.
+## M7 — Advanced techniques ✅
+Fish (incl. finned), single-digit patterns, wings, colouring, uniqueness (classic only), chains.
 
-## M8 — PWA polish
-- Manifest, service worker (offline), install prompt, dark mode, haptics, stats screen, technique progress, daily puzzle.
+## M8 — PWA polish ✅ (mostly)
+Manifest, icons, offline service worker, dark stage themes, haptics, effects levels, stats
+(solved, best times, streak, per-technique hint counts), generative audio.
+*Deferred: install prompt UI, daily puzzle, technique mastery (new / learning / solid).*
 
-## Later
-Training packs, mistake replay, OCR import, optional LLM rephrasing of hints.
+## Next
+- Calculator UI (M4).
+- Worked examples on the Learn screen (a real position per technique, drawn with the hint layer).
+- Technique mastery tracking by classifying the player's own placements.
+- Training packs; "explain my mistake" replay.

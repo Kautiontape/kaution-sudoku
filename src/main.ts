@@ -37,6 +37,10 @@ app.onError = (message) => toast(message, "bad");
 // Browsers only allow audio after a gesture: unlock on the first touch anywhere.
 addEventListener("pointerdown", () => sound.unlock(), { capture: true, once: true });
 
+// Offline play once installed. Skipped in dev and wherever service workers aren't allowed.
+if (import.meta.env.PROD && "serviceWorker" in navigator && location.protocol === "https:")
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+
 // ?play=killer-medium jumps straight into a game (handy for sharing and for tests).
 const play = new URLSearchParams(location.search).get("play");
 const [mode, difficulty] = (play ?? "").split("-") as [Mode, Difficulty];
