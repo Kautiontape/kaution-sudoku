@@ -1620,6 +1620,43 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.example-btn {
+  margin: 0 16px 14px;
+}
+
+.example {
+  margin: 0 12px 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(3, 5, 16, 0.7);
+  border: 1px solid var(--line);
+}
+
+.example-board {
+  display: flex;
+  justify-content: center;
+  --board: min(calc(100vw - 72px), 360px);
+}
+
+.example-board .board-wrap,
+.example-board .qboard-wrap {
+  pointer-events: none;
+}
+
+.example-text {
+  margin-top: 12px;
+}
+
+.example-text p {
+  margin: 0 4px 8px;
+  font-size: 14.5px;
+}
+
+.example-text .example-do {
+  color: var(--good);
+  font-weight: 600;
+}
+
 .set-row {
   display: flex;
   align-items: center;

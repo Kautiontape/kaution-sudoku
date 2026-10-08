@@ -6,6 +6,7 @@
 import { SUDOKU_CATALOG } from "../../engine/catalog";
 import { TIER_NAMES, type TechniqueFamily, type TechniqueInfo } from "../../engine/hint-types";
 import { QUEENS_RULES, QUEENS_TECHNIQUES } from "../../engine/queens/catalog";
+import { hasExample, loadExamples, renderExample } from "../components/example";
 import { h, svgIcon } from "../dom";
 import { ICONS } from "../icons";
 import { sound } from "../sound";
@@ -67,6 +68,28 @@ export function openLearn(focus?: string): void {
       t.tip ? h("p", { class: "tip" }, h("b", null, "Tip: "), t.tip) : null,
       t.aka?.length ? h("p", { class: "aka" }, `Also called: ${t.aka.join(", ")}`) : null,
     );
+    // A real position from the packs, drawn with the hint visuals (loaded lazily).
+    void loadExamples().then((ex) => {
+      if (!ex || !hasExample(ex, t.id, t.family)) return;
+      const slot = h("div", { class: "example-slot" });
+      const btn = h(
+        "button",
+        {
+          class: "btn ghost example-btn",
+          type: "button",
+          "data-testid": `example-${t.id}`,
+          onclick: () => {
+            sound.ui("open");
+            slot.replaceChildren(renderExample(ex, t.id, t.family));
+            btn.remove();
+          },
+        },
+        svgIcon(ICONS.sparkle),
+        "See it on a real board",
+      );
+      details.append(btn, slot);
+      if (details.classList.contains("focus") && details.open) btn.click();
+    });
     return details;
   };
 
