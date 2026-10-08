@@ -63,6 +63,13 @@ by the hardest technique the logical solver needs. Killer puzzles use a full log
 uniqueness proof: when the solver gets stuck, the loosest stuck cage is split and the solve reruns.
 Queens puzzles grow colour regions around a valid queen placement and repair until unique.
 
+## Deploying
+
+Live at [cagecoach.kautiontape.com](https://cagecoach.kautiontape.com). Push to `main`: a
+self-hosted GitHub Actions runner on **ktn** pulls into `/opt/services/kaution-sudoku`, runs
+`npm ci && npm run build`, and the host nginx serves `dist/` (`.github/workflows/deploy.yml`).
+Pull requests run `npm run check` on GitHub's runners (`.github/workflows/ci.yml`).
+
 ## Docs
 
 - What it does: `docs/SPEC.md`
