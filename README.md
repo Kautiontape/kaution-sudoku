@@ -13,7 +13,12 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
 - **SudokuWiki-style visuals.** Candidates coloured by role (placed, eliminated, pattern, chain
   colours), sight lines from the digits that justify a single, chain arrows, dashed 45-rule cages.
 - **Learn screen.** Rules plus every technique the hint engine knows, grouped by tier: how to spot
-  it, why it works, tips, and how often hints have shown it to you.
+  it, why it works, tips, how often hints have shown it to you, and a worked example on a real
+  board drawn with the same hint visuals.
+- **Killer helpers.** The cage bar lists a cage's combinations; its **Σ45 lens** works the 45 rule
+  for any row, column or box ("45 − (22+10) = 13, so r4c4 + r6c5 = 13") and rings the cells.
+- **Comfortable input.** Long-press a digit to pencil it; drag across cells to pencil a digit into
+  all of them; auto-notes; unlimited undo; keyboard on desktop.
 - **Mistakes that teach.** "Row 6 already has a 5." "That cage already has a 7." "This 3-cell cage
   sums to 6, so it can only be 1+2+3 — no 9."
 - **Feel.** A slow aurora that blooms where you play; sparks in each digit's colour; light sweeping

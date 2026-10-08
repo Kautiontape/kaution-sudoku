@@ -36,6 +36,8 @@ export interface CellInfo {
 }
 
 export async function readBoard(page: Page): Promise<CellInfo[]> {
+  // Puzzles load asynchronously: wait for the full board before reading it.
+  await expect(page.locator(".board .cell")).toHaveCount(81);
   return page.$$eval(".board .cell", (els) =>
     els.map((el) => {
       const d = (el as HTMLElement).dataset;
