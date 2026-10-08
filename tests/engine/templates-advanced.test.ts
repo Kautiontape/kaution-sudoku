@@ -53,7 +53,8 @@ describe("advanced registry, templates and catalog agree", () => {
   it("keeps the agreed difficulty order", () => {
     const rating = (id: string) => ADVANCED_TECHNIQUES.find((t) => t.id === id)!.rating;
     const order = [
-      ["x-wing", "finned-x-wing", "swordfish", "finned-swordfish", "two-string-kite", "xy-wing", "xyz-wing", "empty-rectangle", "jellyfish", "bug-plus-one", "x-chain", "xy-chain", "aic"],
+      // Skyscraper and 2-String Kite are taught before the finned X-Wing that also covers them.
+      ["x-wing", "skyscraper", "two-string-kite", "finned-x-wing", "swordfish", "finned-swordfish", "xy-wing", "xyz-wing", "empty-rectangle", "jellyfish", "bug-plus-one", "x-chain", "xy-chain", "aic"],
       ["skyscraper", "two-string-kite", "empty-rectangle"],
       ["w-wing", "simple-coloring"],
     ];

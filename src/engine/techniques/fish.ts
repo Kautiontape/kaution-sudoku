@@ -203,5 +203,5 @@ function finnedAt(
 export const xWing = basicFish(2, "x-wing", 3, 3.2);
 export const swordfish = basicFish(3, "swordfish", 3, 3.8);
 export const jellyfish = basicFish(4, "jellyfish", 4, 5.2);
-export const finnedXWing = finnedFish(2, "finned-x-wing", 4, 3.4);
+export const finnedXWing = finnedFish(2, "finned-x-wing", 3, 3.4);
 export const finnedSwordfish = finnedFish(3, "finned-swordfish", 4, 4.0);

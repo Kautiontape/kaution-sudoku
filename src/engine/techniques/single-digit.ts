@@ -21,8 +21,8 @@ const weak = (a: CellId, b: CellId, d: Digit): ChainLink => ({ from: { cell: a, 
 
 export const skyscraper: Technique = {
   id: "skyscraper",
-  tier: 4,
-  rating: 4.0,
+  tier: 3,
+  rating: 3.3,
   find(s) {
     const pos = housePositions(s);
     for (const d of openDigits(s)) {
@@ -43,8 +43,8 @@ export const skyscraper: Technique = {
             const baseLine = h1 < 9 ? 9 + colOf(base[0]) : rowOf(base[0]);
             return makeStep({
               technique: "skyscraper",
-              tier: 4,
-              rating: 4.0,
+              tier: 3,
+              rating: 3.3,
               eliminations: elims,
               focus: { cells: [...base, ...tops].sort((a, b) => a - b), cages: [], houses: [house(h1), house(h2)] },
               explain: { kind: "skyscraper", digit: d, lines: [house(h1), house(h2)], baseLine: house(baseLine), base, tops },
@@ -61,8 +61,8 @@ export const skyscraper: Technique = {
 
 export const twoStringKite: Technique = {
   id: "two-string-kite",
-  tier: 4,
-  rating: 4.1,
+  tier: 3,
+  rating: 3.35,
   find(s) {
     const pos = housePositions(s);
     for (const d of openDigits(s)) {
@@ -86,8 +86,8 @@ export const twoStringKite: Technique = {
               const cells = [rIn, rFar, cIn, cFar];
               return makeStep({
                 technique: "two-string-kite",
-                tier: 4,
-                rating: 4.1,
+                tier: 3,
+                rating: 3.35,
                 eliminations: elims,
                 focus: { cells: [...cells].sort((a, b) => a - b), cages: [], houses: [house(r), house(c), house(18 + box)] },
                 explain: {
