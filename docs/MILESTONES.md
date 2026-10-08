@@ -50,6 +50,9 @@ layer for what-if queens that never counts and wipes back to your spot (or is ke
 Levels flow: auto-advance after a solve with a translucent results banner; eight themed level
 entrances with matching exits and arrival sounds; Scores (records + history).
 
+Hints aim at the next digit: board-only reasoning, placement lookahead with digit-aware
+dependency tracing, chained "why" with a notes nudge; only impossible notes are flagged.
+
 ## Next
 - Calculator tape UI and multi-house lens (M4).
 - Technique mastery tracking by classifying the player's own placements.

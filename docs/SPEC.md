@@ -75,23 +75,41 @@ solution is flagged with a pointer to the hint.
 
 ## 3. Hint ladder
 
-Every hint is one step the logical solver found from the player's **current** position, using the
-player's notes as their candidate record where they exist (so elimination-only steps persist — the
-"do" rung writes them into notes) and basic candidates elsewhere.
+Every hint gets you to the next **digit you can know** from the player's current board. Hints
+reason from the board itself, never from the player's notes: notes record what a cell *might* be
+(many players pencil loosely), so a note that merely leaves out the answer is not a mistake.
+
+The solver looks ahead a few placements and picks the one that needs the fewest narrowing steps
+first; candidates a step relies on are traced back, digit by digit, so unrelated steps drop out.
+It first checks the board for digits that need nothing at all (a single, a cage's last cell, a
+45-rule sum — even ones the step-by-step solver would only reach late). Over whole solves:
+~72–86% of killer hints and ~92% of classic ones place a digit outright; ~7–11% need one to
+three narrowing steps, which the "why" rung walks through ("First, look at the 7 cage at r4c3: …
+So r4c3, r4c4 and r4c5 can only be 1, 2 or 4."), then shows how you know the digit, then nudges
+that notes would have shown it at a glance. "Do" places the digit; nothing is written into the
+player's notes.
+
+When the nearest digit is further than that (the hard openings of tough killers), the hint
+teaches the route in rounds of up to three steps, aimed at a named square ("Two steps on the way
+to r3c1."), with "Do" = "Keep in mind: …". The game remembers what hints have ruled out (saved
+with the game, never shown as notes), so the next hint picks up from there — and every later
+hint is shorter for it. Rounds are ~4% of killer-easy hints, ~20% of expert.
 
 Before any step, the hint checks, in order:
 1. **Wrong digits / queens** → "Something's off in the top-left box." … "Clear r3c4."
-2. **Notes that exclude the answer** (or ✕s on a queen's cell) → "One of your notes rules out the
-   real answer." … "Reset the notes in r6c2." (Never reveals the digit.)
-3. **The easiest logical step** (tiered registry, easiest first).
+2. **Impossible notes** — a pencilled digit already in the cell's row, column, box or cage, or
+   (killer) one no combination of the cage's sum uses → "r1c3 has a 5 pencilled in, but r1c1 — in
+   the same row — is already 5." … "Remove 5 from r1c3's notes." Only those digits come out; the
+   rest of the player's notes are left alone. (Queens: ✕ on a queen's cell, as before.)
+3. **The next digit** (above).
 4. If nothing applies (shouldn't happen with the packs): offer to reveal one cell.
 
 | Rung | Shows | Board |
 |---|---|---|
 | 1 Where | which area to look at, no technique named | area tinted, rest dimmed |
 | 2 What | technique name + one-line nudge, tier badge | pattern cells outlined, cages lit |
-| 3 Why | full reasoning with cells, digits and arithmetic | candidates coloured by role, sight lines from justifying digits, chain arrows, dashed virtual cages |
-| 4 Do | applies the step (placements, or eliminations written into notes) | normal feedback |
+| 3 Why | full reasoning with cells, digits and arithmetic (narrowing steps first, if any) | candidates coloured by role (narrowing steps' eliminations struck through), sight lines from justifying digits, chain arrows, dashed virtual cages, the cages involved lit |
+| 4 Do | places the digit | normal feedback |
 
 Hint text is generated from structured `Step.explain` data via per-technique templates (no LLM,
 no prose in techniques). "Learn" on the sheet opens that technique's guide.
@@ -151,7 +169,8 @@ square's colour.
   *Ripple* (squares well up in rings from one point), *Deal* (cards flip in diagonally), *Vortex*
   (a spiral in from the edge as the board unwinds), *Shards* (pieces fly in and lock together),
   *Hologram* (a scanline projects the board row by row), *Nova* (a flash at the centre blooms
-  out). Each has its own arrival sound and a "LEVEL n · Style" callout. Cells stay live during
+  out). Each has its own arrival sound; a small "LEVEL n" callout marks the arrival (the style is never
+  named — it's meant to be felt, not announced). Cells stay live during
   them; Calm effects / reduced motion get a short fade. `?entrance=<style>` pins one (previews,
   tests).
 - Mistake: shake, red sparks, muted thud, explanation toast.

@@ -60,6 +60,7 @@ interface Ctx extends StageKit {
 
 export interface LevelStyle {
   id: string;
+  /** For code and docs only: never shown to the player. */
   name: string;
   /** Bring a new board in; returns ms until it has landed. */
   enter(c: Ctx): number;
@@ -539,7 +540,8 @@ export function leaveLevel(s: Stage, kit: StageKit): number {
 
 /**
  * Bring a level's board in (in the style leaveLevel picked, or the next in the rotation), with
- * its number called out as it lands. Returns the style and ms until it has landed.
+ * its number called out as it lands — the style itself is never named. Returns the style and ms
+ * until it has landed.
  */
 export function enterLevel(s: Stage, kit: StageKit, level: number): { style: LevelStyle; ms: number } {
   const i = coming ?? nextStyle();
@@ -552,6 +554,6 @@ export function enterLevel(s: Stage, kit: StageKit, level: number): { style: Lev
   const c = context(s, kit);
   const ms = style.enter(c);
   sound.level(i);
-  at(Math.min(ms * 0.7, 700), () => callout(`LEVEL ${level}`, { size: "small", sub: style.name, color: c.color, y: c.rect.top + c.rect.height * 0.46 }));
+  at(Math.min(ms * 0.7, 700), () => callout(`LEVEL ${level}`, { size: "small", color: c.color, y: c.rect.top + c.rect.height * 0.46 }));
   return { style, ms };
 }

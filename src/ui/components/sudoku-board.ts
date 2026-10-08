@@ -8,7 +8,8 @@ import { boxOf, CELL_HOUSES, cellName, colOf, HOUSE_CELLS, houseIndex, parseCell
 import type { SudokuHint } from "../../engine/hints/index";
 import type { CandidateMark, CellId, Puzzle } from "../../engine/types";
 import { cageAnchor } from "../../engine/hints/format";
-import { ladderTexts, refColors } from "../cell-refs";
+import { ladderColors } from "../cell-refs";
+import type { LadderText } from "../../engine/hint-types";
 import { flipOffset, h, s } from "../dom";
 import type { Stage } from "../fx/levels";
 import { DIGIT_COLORS } from "../palette";
@@ -333,7 +334,7 @@ export class SudokuBoard {
     while (this.hintG.firstChild) this.hintG.firstChild.remove();
     for (const p of this.cagePaths.values()) p.classList.remove("h-cage");
     this.board.classList.toggle("hinting", !!hint && rung > 0);
-    this.showRefs(hint && rung > 0 ? this.refColors(ladderTexts(hint.ladder, rung)) : new Map());
+    this.showRefs(hint && rung > 0 ? this.refColors(hint.ladder, rung) : new Map());
     if (!hint || rung <= 0) return;
 
     const step = hint.step;
@@ -349,25 +350,29 @@ export class SudokuBoard {
 
     const focus = step ? step.focus.cells : (hint.cells ?? []);
     for (const c of focus) this.cellEls[c]!.classList.add("h-focus");
-    if (step) for (const id of step.focus.cages) this.cagePaths.get(id)?.classList.add("h-cage");
+    // A chained hint lights the cages its narrowing steps use, too.
+    const prior = hint.prior ?? [];
+    if (step) for (const id of [...step.focus.cages, ...prior.flatMap((p) => p.focus.cages)]) this.cagePaths.get(id)?.classList.add("h-cage");
     if (rung < 3) return;
 
     if (step) {
       for (const c of step.sources ?? []) this.cellEls[c]!.classList.add("h-source");
-      for (const e of step.eliminations) this.cellEls[e.cell]!.classList.add("h-target");
+      for (const e of [...prior.flatMap((p) => p.eliminations), ...step.eliminations]) this.cellEls[e.cell]!.classList.add("h-target");
       for (const p of step.placements) this.cellEls[p.cell]!.classList.add("h-place");
-      this.drawMarks(step.marks ?? []);
+      // What the narrowing steps rule out shows as struck candidates, beside the step's own marks.
+      this.drawMarks([...prior.flatMap((p) => p.eliminations.map((e) => ({ cell: e.cell, digit: e.digit, role: "elim" as const }))), ...(step.marks ?? [])]);
       this.drawSightLines();
       for (const l of step.links ?? []) this.drawLink(l.from, l.to, l.strong);
-      for (const vc of step.virtualCages ?? []) this.hintG.append(s("path", { d: cagePath(vc.cells, 0.17, UNIT), class: "virtual-cage" }));
+      for (const vc of [...prior.flatMap((p) => p.virtualCages ?? []), ...(step.virtualCages ?? [])])
+        this.hintG.append(s("path", { d: cagePath(vc.cells, 0.17, UNIT), class: "virtual-cage" }));
     } else {
       for (const c of hint.cells ?? []) this.cellEls[c]!.classList.add(hint.kind === "mistake" ? "h-elim" : "h-target");
     }
   }
 
-  /** Colours for the squares named in `texts` (the hint sheet colours the names to match). */
-  refColors(texts: readonly string[]): Map<string, string> {
-    return refColors(texts);
+  /** Colours for the squares a hint's visible text names (the hint sheet colours them to match). */
+  refColors(ladder: LadderText, rung: number): Map<string, string> {
+    return ladderColors(ladder, rung);
   }
 
   /** Ring each named square in its colour. Rings that stay lit aren't rebuilt, so they don't re-animate. */

@@ -262,10 +262,12 @@ test("killer: the 45 lens works out a house's innies or outies", async ({ page }
   await expect(page.locator(".cell.lens-region")).toHaveCount(0);
 });
 
-test("killer: the first hints teach cage combinations", async ({ page }) => {
+test("killer: a hint goes straight for a digit and places it", async ({ page }) => {
   await page.goto("/?play=killer-easy");
+  await landed(page);
   const why = await applyNextHint(page);
   expect(why.length).toBeGreaterThan(10);
+  await expect(page.locator(".board .cell.filled")).toHaveCount(1);
 });
 
 test("queens: tap toggles ✕, double-tap makes a queen, hold clears; clashes are explained; hints solve it", async ({ page }) => {

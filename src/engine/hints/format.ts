@@ -69,6 +69,22 @@ export function elimText(elims: readonly Elimination[]): string {
   return [...groups.entries()].map(([mask, cells]) => `${maskList(mask)} from ${cellList(cells)}`).join("; ");
 }
 
+/** The same eliminations as facts: "r1c6 and r4c4 can't be 6; r1c9 can't be 3 or 8". */
+export function cantBe(elims: readonly Elimination[]): string {
+  const byCell = new Map<CellId, number>();
+  for (const e of elims) byCell.set(e.cell, (byCell.get(e.cell) ?? 0) | (1 << e.digit));
+  const groups = new Map<number, CellId[]>();
+  for (const [cell, mask] of [...byCell.entries()].sort((a, b) => a[0] - b[0])) groups.set(mask, [...(groups.get(mask) ?? []), cell]);
+  return [...groups.entries()].map(([mask, cells]) => `${cellList(cells)} can't be ${maskList(mask, "or")}`).join("; ");
+}
+
+/** "Look at the 22 cage at r1c6." → "look at the 22 cage at r1c6", to lead into a clause. */
+export const asClause = (sentence: string): string => sentence.charAt(0).toLowerCase() + sentence.slice(1).replace(/\.$/, "");
+
+const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+/** Small counts as words ("three steps"); bigger ones as digits. */
+export const numberWord = (n: number): string => WORDS[n] ?? String(n);
+
 /** The "do" line for an elimination step: "Remove 3 and 8 from r1c9." */
 export function removeSentence(elims: readonly Elimination[]): string {
   return `Remove ${elimText(elims)}.`;

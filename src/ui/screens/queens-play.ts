@@ -90,7 +90,7 @@ class QueensPlay implements Screen {
       onApply: () => this.applyHint(),
       onLearn: (id) => openLearn(id),
       onClose: () => this.closeHint(),
-      refColors: (texts) => this.board.refColors(texts),
+      refColors: (ladder, rung) => this.board.refColors(ladder, rung),
       onRef: (name) => this.board.flashRef(name),
     });
     this.timerEl = h("div", { class: "timer" });

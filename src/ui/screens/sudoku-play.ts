@@ -110,7 +110,7 @@ class SudokuPlay implements Screen {
       onApply: () => this.applyHint(),
       onLearn: (id) => openLearn(id),
       onClose: () => this.closeHint(),
-      refColors: (texts) => this.board.refColors(texts),
+      refColors: (ladder, rung) => this.board.refColors(ladder, rung),
       onRef: (name) => this.board.flashRef(name),
     });
 
@@ -624,8 +624,8 @@ class SudokuPlay implements Screen {
     const hint = this.hint;
     if (!hint) return;
     this.game.recordRung(hint.kind === "step" ? r : 0);
-    const cand = createState(this.puzzle, this.game.grid, this.game.notes).cand;
-    this.board.showHint(hint, r, cand);
+    // Hints reason from the board (and what hints already ruled out), so that's what they show.
+    this.board.showHint(hint, r, this.game.hintCandidates());
     sound.hint(r);
     if (r === 3 && hint.step?.links?.length) {
       for (const l of hint.step.links.slice(0, 6)) {
@@ -645,11 +645,13 @@ class SudokuPlay implements Screen {
     this.closeHint();
     this.game.applyHint(hint);
     if (hint.step && !hint.step.placements.length) {
-      for (const e of hint.step.eliminations) {
+      // A step on the way to a digit: nothing lands on the board, so show what it ruled out.
+      for (const e of [...(hint.prior ?? []), hint.step].flatMap((s) => s.eliminations)) {
         const p = this.board.center(e.cell);
         this.app.fx.burst(p.x, p.y, MARK_COLORS.elim!, { count: 5, speed: 90, size: 5, life: 0.5 });
       }
-      toast(`${hint.title}: ${hint.ladder.do}`, "good");
+      toast(hint.ladder.do, "good", 5200);
+      this.render();
     }
   }
 

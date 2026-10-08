@@ -11,7 +11,7 @@ import { stepText } from "../../engine/queens/hints";
 import { decodeQueens, type QueensPackEntry } from "../../engine/queens/pack";
 import type { QStep } from "../../engine/queens/types";
 import type { Step } from "../../engine/types";
-import { ladderTexts, refNodes } from "../cell-refs";
+import { refNodes } from "../cell-refs";
 import { h } from "../dom";
 import { REGION_COLORS } from "../palette";
 import { QueensBoard } from "./queens-board";
@@ -47,7 +47,7 @@ export function renderExample(ex: Examples, id: string, family: string): HTMLEle
     const text = stepText(e.step, puzzle, names);
     const hint = { kind: "step", title: "", ladder: text, step: e.step } as QueensHint;
     board.showHint(hint, 4);
-    return wrap(board.el, text.why, text.do, board.refColors(ladderTexts(text, 4)), (name) => board.flashRef(name));
+    return wrap(board.el, text.why, text.do, board.refColors(text, 4), (name) => board.flashRef(name));
   }
   const e = ex.sudoku[id]!;
   const puzzle = decodeSudoku(e.puzzle);
@@ -71,7 +71,7 @@ export function renderExample(ex: Examples, id: string, family: string): HTMLEle
   const text = templateFor(e.step.technique)(e.step, { puzzle });
   const hint = { kind: "step", title: "", ladder: text, step: e.step, cells: e.step.focus.cells } as SudokuHint;
   requestAnimationFrame(() => board.showHint(hint, 4, cand));
-  return wrap(board.el, text.why, text.do, board.refColors(ladderTexts(text, 4)), (name) => board.flashRef(name));
+  return wrap(board.el, text.why, text.do, board.refColors(text, 4), (name) => board.flashRef(name));
 }
 
 function wrap(boardEl: HTMLElement, why: string[], doText: string, colors: ReadonlyMap<string, string>, onRef: (name: string) => void): HTMLElement {

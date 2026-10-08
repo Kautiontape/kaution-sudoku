@@ -1,5 +1,5 @@
 import { maskOf } from "../../src/engine/combos";
-import type { Puzzle } from "../../src/engine/types";
+import type { Puzzle, Step } from "../../src/engine/types";
 import { SudokuGame, type GameEvent } from "../../src/game/sudoku-game";
 import { cage, cell, classic } from "../engine/helpers";
 
@@ -133,6 +133,25 @@ describe("SudokuGame", () => {
     g.undo();
     expect(g.grid[cell("r1c3")]).toBe(4);
     expect(g.notes[cell("r1c4")]).toBe(maskOf([2, 6]));
+  });
+
+  it("remembers what a hint rules out for the next hint, never writing it into the notes", () => {
+    const g = new SudokuGame(WIKI);
+    const step = {
+      technique: "pointing",
+      tier: 2,
+      rating: 2,
+      placements: [],
+      eliminations: [{ cell: cell("r1c3"), digit: 1 as const }],
+      focus: { cells: [], cages: [], houses: [] },
+      explain: {},
+    } as unknown as Step;
+    g.applyHint({ kind: "step", title: "Pointing", ladder: { where: "", what: "", why: [], do: "" }, step, prior: [] });
+    expect(g.known[cell("r1c3")]).toBe(maskOf([1]));
+    expect(g.notes[cell("r1c3")]).toBe(0);
+    expect(g.hintCandidates()[cell("r1c3")]! & maskOf([1])).toBe(0);
+    const restored = new SudokuGame(WIKI, JSON.parse(JSON.stringify(g.toJSON())));
+    expect(restored.known[cell("r1c3")]).toBe(maskOf([1]));
   });
 
   it("serializes and restores progress", () => {

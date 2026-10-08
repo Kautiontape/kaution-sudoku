@@ -82,9 +82,16 @@ tests/
   coloured by `ui/cell-refs.ts`; each board computes the colours for the visible rungs itself
   (`refColors`), and the hint sheet asks the board for the same map, so text and rings always
   agree.
-- **Hint state** = basic candidates narrowed by the player's notes where they have any. So an
-  elimination-only step is "remembered" once applied (it's written into notes), and hints always
-  reason about what the player can see.
+- **Hints** reason from the board (basic candidates), never from the player's notes, and always
+  end in a placement: `sudokuHint` runs the solver ahead a few placements, traces each one's
+  candidate dependencies back through the steps before it (digit-aware: a hidden single of 7 only
+  needs earlier eliminations of 7 in its house; arithmetic placements need none), and picks the
+  placement with the fewest. A direct probe first asks every placing technique (singles, cage
+  last cell, 45-rule sums) about the board itself. Up to three steps become `hint.prior`, walked
+  through in the "why" rung; longer routes are taught in rounds of three (a hint with no
+  placement). Everything a hint rules out goes into `SudokuGame.known` (saved, never shown as
+  notes) and back in as `HintInput.known`, so rounds build on each other. Notes are only checked
+  for digits that are impossible (`impossibleNotes`).
 
 ### Generation
 - Classic: random solved grid → dig 180°-symmetric pairs while the exact solver says unique →

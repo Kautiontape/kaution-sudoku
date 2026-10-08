@@ -5,11 +5,11 @@ Tetris Effect–inspired light-and-sound show. Installable PWA, works offline, b
 
 - **Three puzzles.** Classic sudoku, killer (cage sums, no givens), and the colour-region
   *Queens* puzzle (one queen per row, column and colour; queens never touch).
-- **A coach, not an answer key.** Every hint is one logical step from your current position,
-  revealed one rung at a time — *where* → *what* (technique) → *why* (full reasoning, drawn on the
-  board) → *do*. Before any step it checks for wrong digits and for notes that rule out the real
-  answer. Hints never guess: every puzzle in the packs is solvable start to finish by the same
-  techniques the hints use.
+- **A coach, not an answer key.** Every hint takes you to the next digit you can *know* from your
+  board, revealed one rung at a time — *where* → *what* (technique) → *why* (full reasoning, drawn
+  on the board, with any narrowing it needs first) → *do*. It checks for wrong digits and for
+  notes that are impossible — but never treats loose notes as mistakes. Hints never guess: every
+  puzzle in the packs is solvable start to finish by the same techniques the hints use.
 - **SudokuWiki-style visuals.** Candidates coloured by role (placed, eliminated, pattern, chain
   colours), sight lines from the digits that justify a single, chain arrows, dashed 45-rule cages.
 - **Squares you can find at a glance.** Every square a hint names ("r9c8") gets an accent colour

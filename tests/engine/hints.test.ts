@@ -1,9 +1,10 @@
-import { gridFromPuzzle } from "../../src/engine/candidates";
+import { readFileSync } from "node:fs";
+import { basicCandidates, comboCandidates, gridFromPuzzle } from "../../src/engine/candidates";
 import { techniqueInfo, SUDOKU_CATALOG } from "../../src/engine/catalog";
-import { maskOf } from "../../src/engine/combos";
+import { bit, maskOf } from "../../src/engine/combos";
 import { sudokuHint } from "../../src/engine/hints/index";
 import { TEMPLATES } from "../../src/engine/hints/registry";
-import { decodeSudoku, encodeSudoku } from "../../src/engine/pack";
+import { decodeSudoku, encodeSudoku, type SudokuPackEntry } from "../../src/engine/pack";
 import { generateClassic, generateKiller } from "../../src/engine/puzzles";
 import { createState } from "../../src/engine/state";
 import { TECHNIQUES } from "../../src/engine/techniques";
@@ -40,13 +41,21 @@ describe("sudokuHint ordering", () => {
     expect(h.ladder.why[0]).toContain("doesn't match the solution");
   });
 
-  it("then flags notes that exclude the answer", () => {
+  it("leaves notes alone that merely miss the answer: notes say what a cell might be, not all it can be", () => {
     const notes = new Uint16Array(81);
-    notes[cell("r1c3")] = maskOf([1, 2]); // answer is 4
+    notes[cell("r1c3")] = maskOf([1, 2]); // the answer is 4, but 1 and 2 are both still possible there
+    const h = sudokuHint(input(WIKI, gridFromPuzzle(WIKI), notes));
+    expect(h.kind).toBe("step");
+  });
+
+  it("flags a note that's impossible — the digit is already in that row, column or box", () => {
+    const notes = new Uint16Array(81);
+    notes[cell("r1c3")] = maskOf([4, 5]); // r1c1 is a 5
     const h = sudokuHint(input(WIKI, gridFromPuzzle(WIKI), notes));
     expect(h.kind).toBe("notes");
-    expect(h.fix).toEqual({ resetNotes: [cell("r1c3")] });
-    expect(h.ladder.why.join(" ")).not.toContain("4"); // doesn't give the answer away
+    expect(h.fix).toEqual({ removeNotes: [{ cell: cell("r1c3"), mask: maskOf([5]) }] });
+    expect(h.ladder.why[0]).toContain("r1c1");
+    expect(h.ladder.do).toBe("Remove 5 from r1c3's notes.");
   });
 
   it("otherwise gives the easiest logical step with a full ladder", () => {
@@ -71,14 +80,136 @@ describe("sudokuHint ordering", () => {
     expect(SOL[r.cell]).toBe(r.digit);
   });
 
-  it("uses the player's notes as candidates (eliminations persist through notes)", () => {
+  it("reasons from the board, not from the player's notes", () => {
     const grid = gridFromPuzzle(WIKI);
-    const s = createState(WIKI, grid);
-    const notes = Uint16Array.from(s.cand);
-    // Narrow r1c3 to its answer: the next hint can now be a naked single there.
+    const notes = Uint16Array.from(createState(WIKI, grid).cand);
     notes[cell("r1c3")] = maskOf([4]);
-    const h = sudokuHint(input(WIKI, grid, notes));
+    const a = sudokuHint(input(WIKI, grid, notes));
+    const b = sudokuHint(input(WIKI, grid));
+    expect(a.step).toEqual(b.step);
+  });
+});
+
+interface Played {
+  /** Narrowing steps before each placing hint. */
+  prior: number[];
+  /** Hints that only narrowed things down (rounds on a long route). */
+  stones: number;
+}
+
+/**
+ * Play a pack puzzle out on hints alone, remembering what each rules out as the game does. Every
+ * hint must be sound: placements right, eliminations never the answer, at most three steps shown.
+ */
+function playOut(p: Puzzle): Played {
+  const grid = gridFromPuzzle(p);
+  const solution = parseSolution(p.solution!);
+  const known = new Uint16Array(81);
+  const out: Played = { prior: [], stones: 0 };
+  for (let k = 0; k < 400; k++) {
+    const h = sudokuHint({ puzzle: p, grid, notes: new Uint16Array(81), solution, known });
+    if (h.kind === "solved") return out;
     expect(h.kind).toBe("step");
+    const steps = [...(h.prior ?? []), h.step!];
+    expect(steps.length).toBeLessThanOrEqual(4);
+    for (const s of steps.slice(0, -1)) expect(s.placements).toEqual([]);
+    for (const s of steps)
+      for (const e of s.eliminations) {
+        expect(solution[e.cell]).not.toBe(e.digit);
+        known[e.cell]! |= bit(e.digit);
+      }
+    for (const pl of h.step!.placements) {
+      expect(pl.digit).toBe(solution[pl.cell]);
+      grid[pl.cell] = pl.digit;
+    }
+    if (h.step!.placements.length) out.prior.push(h.prior?.length ?? 0);
+    else out.stones++;
+  }
+  throw new Error("hints didn't finish the puzzle");
+}
+
+const packPuzzle = (file: string, i: number): Puzzle =>
+  decodeSudoku((JSON.parse(readFileSync(`public/packs/${file}.json`, "utf8")) as { puzzles: SudokuPackEntry[] }).puzzles[i]!);
+
+describe("hints point at the next digit", () => {
+  it("hints alone solve a classic expert puzzle, nearly always going straight for a digit", () => {
+    const { prior, stones } = playOut(packPuzzle("classic-expert", 0));
+    expect(prior.filter((n) => n === 0).length / prior.length).toBeGreaterThan(0.85);
+    expect(stones).toBeLessThan(10);
+  });
+
+  it("killer hints mostly place a digit outright; long routes come in short rounds", () => {
+    for (const [file, i] of [["killer-easy", 0], ["killer-hard", 3], ["killer-expert", 1]] as const) {
+      const { prior, stones } = playOut(packPuzzle(file, i));
+      expect(prior.filter((n) => n === 0).length / (prior.length + stones)).toBeGreaterThan(0.6);
+    }
+  });
+
+  it("a long route is taught a round at a time, aimed at a named square", () => {
+    const p = packPuzzle("killer-expert", 1);
+    const grid = gridFromPuzzle(p);
+    const solution = parseSolution(p.solution!);
+    const known = new Uint16Array(81);
+    for (let k = 0; k < 200; k++) {
+      const h = sudokuHint({ puzzle: p, grid, notes: new Uint16Array(81), solution, known });
+      expect(h.kind).toBe("step");
+      if (!h.step!.placements.length) {
+        expect(h.ladder.what).toMatch(/on the way to r\dc\d\.$/);
+        expect(h.ladder.do).toMatch(/^Keep in mind: /);
+        // The next hint builds on it instead of repeating it.
+        for (const s of [...(h.prior ?? []), h.step!]) for (const e of s.eliminations) known[e.cell]! |= bit(e.digit);
+        const next = sudokuHint({ puzzle: p, grid, notes: new Uint16Array(81), solution, known });
+        expect(next.ladder).not.toEqual(h.ladder);
+        return;
+      }
+      for (const s of [...(h.prior ?? []), h.step!]) for (const e of s.eliminations) known[e.cell]! |= bit(e.digit);
+      for (const pl of h.step!.placements) grid[pl.cell] = pl.digit;
+    }
+    throw new Error("no long route in this puzzle");
+  });
+
+  it("explains a chain: the narrowing steps, then how you know, then a nudge toward notes", () => {
+    // Find a killer hint that needs narrowing first.
+    const p = packPuzzle("killer-hard", 3);
+    const grid = gridFromPuzzle(p);
+    const solution = parseSolution(p.solution!);
+    const known = new Uint16Array(81);
+    for (let k = 0; k < 200; k++) {
+      const h = sudokuHint({ puzzle: p, grid, notes: new Uint16Array(81), solution, known });
+      if (h.kind !== "step") break;
+      if (h.prior?.length && h.step!.placements.length) {
+        expect(h.ladder.why[0]).toMatch(/^First/);
+        expect(h.ladder.why.some((w) => /notes/i.test(w))).toBe(true);
+        expect(h.ladder.do).toMatch(/^Place \d in r\dc\d\.$/);
+        return;
+      }
+      for (const s of [...(h.prior ?? []), h.step!]) for (const e of s.eliminations) known[e.cell]! |= bit(e.digit);
+      for (const pl of h.step!.placements) grid[pl.cell] = pl.digit;
+    }
+    throw new Error("no chained hint found in this puzzle");
+  });
+
+  it("flags a killer note no cage combination allows", () => {
+    const p = packPuzzle("killer-easy", 0);
+    const grid = gridFromPuzzle(p);
+    const basic = basicCandidates(p, grid);
+    const combo = comboCandidates(p, grid);
+    let target = -1;
+    let digit = 0;
+    for (let c = 0; c < 81 && target < 0; c++)
+      for (let d = 1; d <= 9; d++)
+        if (basic[c]! & bit(d) && !(combo[c]! & bit(d))) {
+          target = c;
+          digit = d;
+          break;
+        }
+    expect(target).toBeGreaterThanOrEqual(0);
+    const notes = new Uint16Array(81);
+    notes[target] = bit(digit) | (combo[target]! & -combo[target]!); // the impossible digit plus a possible one
+    const h = sudokuHint({ puzzle: p, grid, notes, solution: parseSolution(p.solution!) });
+    expect(h.kind).toBe("notes");
+    expect(h.ladder.why[0]).toMatch(/cage/);
+    expect(h.fix).toEqual({ removeNotes: [{ cell: target, mask: bit(digit) }] });
   });
 });
 

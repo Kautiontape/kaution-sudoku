@@ -6,7 +6,8 @@
  */
 import type { HintCommon } from "../../engine/hint-types";
 import { TIER_NAMES } from "../../engine/hint-types";
-import { ladderTexts, refNodes } from "../cell-refs";
+import type { LadderText } from "../../engine/hint-types";
+import { refNodes } from "../cell-refs";
 import { h, svgIcon } from "../dom";
 import { ICONS } from "../icons";
 
@@ -16,8 +17,8 @@ export interface HintSheetHandlers {
   onApply(): void;
   onLearn(technique: string): void;
   onClose(): void;
-  /** Colours for the squares named in the visible text — the board's, so text and board match. */
-  refColors(texts: readonly string[]): ReadonlyMap<string, string>;
+  /** Colours for the squares the visible rungs name — the board's, so text and board match. */
+  refColors(ladder: LadderText, rung: number): ReadonlyMap<string, string>;
   /** A square's name was tapped. */
   onRef(name: string): void;
 }
@@ -91,7 +92,7 @@ export class HintSheet {
     const rows: HTMLElement[] = [];
     const ladder = hint.ladder;
     const texts: (string | string[])[] = ["", ladder.where, ladder.what, ladder.why, ladder.do];
-    const colors = this.handlers.refColors(ladderTexts(ladder, r));
+    const colors = this.handlers.refColors(ladder, r);
     const para = (p: string) => h("p", null, ...refNodes(p, colors, (name) => this.handlers.onRef(name)));
     for (let i = 1; i <= r; i++) {
       const t = texts[i]!;

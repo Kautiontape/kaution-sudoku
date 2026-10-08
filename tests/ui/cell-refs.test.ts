@@ -2,7 +2,7 @@ import { gridFromPuzzle } from "../../src/engine/candidates";
 import { cellName } from "../../src/engine/geometry";
 import { sudokuHint } from "../../src/engine/hints/index";
 import { parseSolution } from "../../src/engine/validate";
-import { ladderTexts, REF_COLORS, refColors, splitRefs } from "../../src/ui/cell-refs";
+import { ladderColors, ladderTexts, REF_COLORS, refColors, splitRefs } from "../../src/ui/cell-refs";
 import { classic } from "../engine/helpers";
 
 const [GOLD, CYAN, PINK] = REF_COLORS;
@@ -43,6 +43,26 @@ describe("square names in hint text", () => {
     const names = Array.from({ length: REF_COLORS.length + 1 }, (_, i) => `r${(i % 9) + 1}c${Math.floor(i / 9) + 1}`);
     const colors = refColors([names.join(" sees ")]);
     expect(colors.get(names[REF_COLORS.length]!)).toBe(GOLD);
+  });
+
+  it("gives each narrowing step of a chain one colour; the same cage named again keeps it", () => {
+    const ladder = {
+      where: "Look at the 7 cage at r4c3.",
+      what: "Three steps on the way to r3c1.",
+      why: [
+        "First, look at the 7 cage at r4c3: r4c3, r4c4 and r4c5 hold 1, 2 and 4. So r4c3 can't be 9; r4c4 can't be 8.",
+        "Then, look at the 3 cage at r8c1: r8c1 and r9c1 hold 1 and 2.",
+        "Then, look at the 7 cage at r4c3: so r4c5 can only be 4.",
+        "With those ruled out, r3c1 is the only cell; r3c2 sees the 3 in r5c2.",
+      ],
+      do: "Place 3 in r3c1.",
+      steps: 3,
+    };
+    const colors = ladderColors(ladder, 4);
+    expect(new Set(["r4c3", "r4c4", "r4c5"].map((n) => colors.get(n)))).toEqual(new Set([GOLD]));
+    expect(colors.get("r8c1")).toBe(colors.get("r9c1"));
+    expect(colors.get("r8c1")).not.toBe(GOLD);
+    expect(colors.get("r3c2")).not.toBe(colors.get("r5c2")); // past the steps: usual grouping
   });
 
   it("reads the ladder in rung order", () => {

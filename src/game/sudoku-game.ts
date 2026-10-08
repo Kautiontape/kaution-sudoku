@@ -54,6 +54,8 @@ export interface SavedSudoku {
   hints: number;
   rungs: number[];
   solved: boolean;
+  /** Candidates hints have ruled out (bitmask per cell); older saves don't have it. */
+  known?: number[];
 }
 
 export class SudokuGame {
@@ -63,6 +65,8 @@ export class SudokuGame {
   readonly given: Uint8Array;
   grid: Uint8Array;
   notes: Uint16Array;
+  /** Candidates hints have ruled out — the next hint builds on them (never shown as notes). */
+  known: Uint16Array;
   elapsedMs = 0;
   mistakes = 0;
   /** Hints applied (rung 4) or otherwise consumed. */
@@ -86,6 +90,7 @@ export class SudokuGame {
     this.given = g.map((d) => (d ? 1 : 0));
     this.grid = Uint8Array.from(g);
     this.notes = new Uint16Array(81);
+    this.known = new Uint16Array(81);
     this.cageIndex = new Int16Array(81).fill(-1);
     puzzle.cages.forEach((cage, i) => cage.cells.forEach((c) => (this.cageIndex[c] = i)));
     if (saved && saved.puzzleId === puzzle.id && saved.grid.length === 81) {
@@ -98,6 +103,7 @@ export class SudokuGame {
       this.hintsUsed = saved.hints;
       this.rungs = [...saved.rungs, 0, 0, 0, 0, 0].slice(0, 5);
       this.solved = saved.solved;
+      if (saved.known?.length === 81) this.known = Uint16Array.from(saved.known);
     }
   }
 
@@ -323,7 +329,17 @@ export class SudokuGame {
   // Hints
 
   hint(): SudokuHint {
-    return sudokuHint({ puzzle: this.puzzle, grid: this.grid, notes: this.notes, solution: this.solution });
+    return sudokuHint({ puzzle: this.puzzle, grid: this.grid, notes: this.notes, solution: this.solution, known: this.known });
+  }
+
+  /** The candidates hints reason from: the board, minus what hints have already ruled out. */
+  hintCandidates(): Uint16Array {
+    const cand = createState(this.puzzle, this.grid).cand;
+    for (let c = 0; c < 81; c++) {
+      const left = cand[c]! & ~this.known[c]!;
+      if (left) cand[c] = left;
+    }
+    return cand;
   }
 
   recordRung(rung: number): void {
@@ -342,24 +358,17 @@ export class SudokuGame {
     };
     const placed: { cell: CellId; digit: Digit }[] = [];
     if (h.kind === "step" && h.step) {
-      if (h.step.eliminations.length) {
-        const cand = createState(this.puzzle, this.grid, this.notes).cand;
-        for (const e of h.step.eliminations) {
-          const ch = get(e.cell);
-          if (!ch.notes[1]) ch.notes[1] = cand[e.cell]!;
-          ch.notes[1] &= ~bit(e.digit);
-        }
-      }
+      // What a hint rules out is remembered for the next hint — not written into the notes,
+      // which stay the player's own.
+      for (const s of [...(h.prior ?? []), h.step]) for (const e of s.eliminations) this.known[e.cell]! |= bit(e.digit);
       for (const p of h.step.placements) placed.push(p);
     } else if (h.fix) {
       for (const c of h.fix.clear ?? []) {
         const ch = get(c);
         ch.digit[1] = 0;
       }
-      if (h.fix.resetNotes?.length) {
-        const cand = this.candidatesNow();
-        for (const c of h.fix.resetNotes) get(c).notes[1] = cand[c]!;
-      }
+      // Only the impossible digits come out: the rest of a note is the player's own business.
+      for (const { cell, mask } of h.fix.removeNotes ?? []) get(cell).notes[1] &= ~mask;
       for (const r of h.fix.reveal ?? []) placed.push(r);
     }
     for (const p of placed) this.placeChanges(p.cell, p.digit, pending);
@@ -387,6 +396,7 @@ export class SudokuGame {
       hints: this.hintsUsed,
       rungs: [...this.rungs],
       solved: this.solved,
+      known: Array.from(this.known),
     };
   }
 }

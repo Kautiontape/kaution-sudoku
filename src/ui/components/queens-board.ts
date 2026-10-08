@@ -6,6 +6,7 @@
 import { colOf, parseCellName, rowOf } from "../../engine/queens/geometry";
 import type { QueensHint } from "../../engine/queens/hints";
 import { CROSS, QUEEN, type QCell, type QueensPuzzle } from "../../engine/queens/types";
+import type { LadderText } from "../../engine/hint-types";
 import { ladderTexts, splitRefs } from "../cell-refs";
 import { flipOffset, h, svgIcon } from "../dom";
 import type { Stage } from "../fx/levels";
@@ -220,9 +221,9 @@ export class QueensBoard {
    * Colours for the squares named in `texts`: each square's own region colour, so a name in the
    * hint reads as the region it sits in (the text names regions by colour too).
    */
-  refColors(texts: readonly string[]): Map<string, string> {
+  refColors(ladder: LadderText, rung: number): Map<string, string> {
     const colors = new Map<string, string>();
-    for (const text of texts)
+    for (const text of ladderTexts(ladder, rung))
       for (const p of splitRefs(text)) {
         if (typeof p === "string") continue;
         const c = parseCellName(p.name, this.n);
@@ -250,7 +251,7 @@ export class QueensBoard {
     this.coords.light([]);
     if (!hint || this.rung <= 0) return;
     const lit: { row: number; col: number; color: string }[] = [];
-    for (const [name, color] of this.refColors(ladderTexts(hint.ladder, this.rung))) {
+    for (const [name, color] of this.refColors(hint.ladder, this.rung)) {
       const c = parseCellName(name, this.n);
       const el = this.cells[c ?? -1];
       if (c === null || !el) continue;
