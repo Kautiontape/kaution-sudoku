@@ -43,6 +43,7 @@ generated offline, deterministically per seed:
 ```bash
 npm run gen -- --mode all --count 60          # everything
 npm run gen -- --mode killer --difficulty hard --count 60 --seed 1
+npm run examples                              # refresh the Learn screen's worked examples
 ```
 
 Classic puzzles are dug from a random grid while the exact solver confirms uniqueness, then graded

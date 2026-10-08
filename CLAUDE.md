@@ -10,7 +10,9 @@ feel. Read `docs/SPEC.md` (what), `docs/ARCHITECTURE.md` (how), `docs/MILESTONES
 - `npm run typecheck` — `tsc --noEmit`.
 - `npm run check` — typecheck + unit tests + build. Must be green before work is "done".
 - `npm run dev` — Vite dev server. `?play=classic-easy` (or `killer-…`, `queens-…`) opens a game.
-- `npm run gen -- --mode all --count 60` — regenerate `public/packs/*.json`.
+- `npm run gen -- --mode all --count 60` — regenerate `public/packs/*.json`, then `npm run examples`
+  to refresh the Learn screen's worked examples (`public/packs/examples.json`).
+- `npm run build:artifact` — a copy for hosting as a single page (no service worker), in `dist-artifact/`.
 - `npx tsx scripts/audio-check.ts` — offline render + level checks for the synth (needs Chromium).
 
 ## Rules

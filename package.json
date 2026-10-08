@@ -14,7 +14,9 @@
     "check": "npm run typecheck && npm test && npm run build",
     "gen": "tsx scripts/generate-pack.ts",
     "audio-check": "tsx scripts/audio-check.ts",
-    "queens-stats": "tsx scripts/queens-stats.ts"
+    "queens-stats": "tsx scripts/queens-stats.ts",
+    "examples": "tsx scripts/harvest-examples.ts",
+    "build:artifact": "tsx scripts/build-artifact.ts dist-artifact"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
