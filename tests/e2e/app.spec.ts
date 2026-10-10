@@ -120,6 +120,43 @@ test("classic: a drag that starts on the selected cell only selects; a tap there
   await expect(first.locator(".notes i.on")).toHaveCount(0);
 });
 
+test("classic: a second Shift-drag adds a cluster without unselecting the first", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const board = await readBoard(page);
+  // Two side-by-side empty cells in two separated rows: each drag covers exactly its own pair.
+  const adjPair = (rows: number[]): readonly [number, number] | null => {
+    for (const r of rows)
+      for (let c = 0; c < 8; c++) {
+        const left = board.find((x) => x.r === r && x.c === c && !x.value);
+        const right = board.find((x) => x.r === r && x.c === c + 1 && !x.value);
+        if (left && right) return [left.cell, right.cell];
+      }
+    return null;
+  };
+  const pairA = adjPair([2, 1, 3]);
+  const pairB = adjPair([6, 7, 5]);
+  test.skip(!pairA || !pairB, "need an adjacent empty pair in an upper and a lower row");
+  const box = async (c: number) => (await cellLocator(page, c).boundingBox())!;
+  const drag = async ([from, to]: readonly [number, number]) => {
+    const a = await box(from);
+    const b = await box(to);
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+    await page.mouse.up();
+  };
+  await page.keyboard.down("Shift"); // so the pointer events carry shiftKey
+  await drag(pairA!);
+  await drag(pairB!);
+  await page.keyboard.up("Shift");
+  const all = [...pairA!, ...pairB!];
+  for (const c of all) await expect(cellLocator(page, c)).toHaveClass(/msel/); // first cluster kept
+  await expect(page.locator(".cell.msel")).toHaveCount(4);
+  // A digit pencils into all four.
+  await digitKey(page, 6).click();
+  for (const c of all) await expect(cellLocator(page, c).locator(".notes i.on")).toHaveText("6");
+});
+
 test("classic: Shift- or Ctrl-click adds cells to the selection", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   const empties = (await readBoard(page)).filter((x) => !x.value).slice(0, 3);

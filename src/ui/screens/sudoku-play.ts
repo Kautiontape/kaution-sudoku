@@ -68,6 +68,8 @@ class SudokuPlay implements Screen {
   private selected: CellId | null = null;
   /** Cells selected by dragging; digit taps pencil into all of them. */
   private multi: CellId[] = [];
+  /** The selection a drag builds on: the earlier clusters, so a second Shift-drag keeps them. */
+  private dragBase: CellId[] = [];
   private activeDigit = 0;
   /** A digit held on the pad: lit across the grid until the next move. */
   private peekDigit = 0;
@@ -373,7 +375,9 @@ class SudokuPlay implements Screen {
   // Input
 
   private onDragSelect(cells: CellId[]): void {
-    this.multi = cells;
+    // Union with what was already selected, so a drag adds a cluster instead of replacing one.
+    const set = [...new Set([...this.dragBase, ...cells])];
+    this.multi = set.length > 1 ? set : [];
     this.selected = cells[cells.length - 1]!;
     sound.ui("select");
     this.render();
@@ -396,12 +400,14 @@ class SudokuPlay implements Screen {
       else if (set.length > 1) set.splice(i, 1);
       this.multi = set.length > 1 ? set : [];
       this.selected = i < 0 ? c : set[set.length - 1]!;
+      this.dragBase = [...set]; // a drag from here keeps these cells
       this.pressWasSelected = false;
       sound.ui("select");
       this.render();
       return;
     }
     this.pressWasSelected = this.selected === c && this.multi.length <= 1;
+    this.dragBase = []; // a plain press starts the drag's selection fresh
     this.multi = [];
     this.selected = c;
     if (!this.pressWasSelected) sound.ui("select");
