@@ -38,7 +38,9 @@ Easy / Medium / Hard / Expert per mode, graded by the hardest technique the logi
   select several; a digit then pencils into all of them (or comes out of all, if all have it),
   and Erase wipes them all (digits and notes), each as one undo step. A cell acts on release, not
   on press: pressing the selected cell to start a drag never pencils anything, while a plain tap
-  on it repeats the last digit.
+  on it repeats the last digit. **Hold an empty square** (a deliberate ~1.5 s press, one knob in
+  `sudoku-board.ts`) and a wheel of digit dots floats around it; flick toward one and let go to
+  enter it — as an answer or a note, following the mode — or release near the centre to cancel.
 - Placing a digit auto-removes it from notes in the same row/col/box/**cage**, and (killer) takes
   out of the cage's other notes any digit its remaining sum no longer allows (setting).
 - Highlights: selected cell, its peers, its cage, every cell with the same digit, matching notes.

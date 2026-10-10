@@ -120,6 +120,36 @@ test("classic: a drag that starts on the selected cell only selects; a tap there
   await expect(first.locator(".notes i.on")).toHaveCount(0);
 });
 
+test("classic: holding an empty square opens the number wheel; a flick enters the digit", async ({ page }) => {
+  await page.goto("/?play=classic-easy");
+  const board = await readBoard(page);
+  const wheel = page.getByTestId("radial");
+  // A flick straight up lands on 1 (1 sits at 12 o'clock).
+  const flickUp = async (cell: number, expectDigit: string, shot = false) => {
+    const bx = (await cellLocator(page, cell).boundingBox())!;
+    const cx = bx.x + bx.width / 2;
+    const cy = bx.y + bx.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await expect(wheel).toHaveClass(/open/, { timeout: 4000 }); // the hold threshold, then the wheel
+    await page.mouse.move(cx, cy - bx.height * 1.6);
+    await expect(page.locator(".radial-dot.on")).toHaveText(expectDigit);
+    if (shot) await page.screenshot({ path: "test-results/screens/radial.png" });
+    await page.mouse.up();
+    await expect(wheel).not.toHaveClass(/open/);
+  };
+  // Answer mode: the digit lands in the square.
+  const a = board.find((x) => !x.value && x.r >= 3 && x.r <= 5)!;
+  await flickUp(a.cell, "1", true);
+  await expect(cellLocator(page, a.cell).locator(".v")).toHaveText("1");
+  // Notes mode: the same flick pencils the digit instead.
+  await page.getByTestId("tool-notes").click();
+  const b = board.find((x) => !x.value && x.cell !== a.cell && x.r >= 3 && x.r <= 5)!;
+  await flickUp(b.cell, "1");
+  await expect(cellLocator(page, b.cell).locator(".notes i.on")).toHaveText("1");
+  await expect(cellLocator(page, b.cell).locator(".v")).toHaveText("");
+});
+
 test("classic: a second Shift-drag adds a cluster without unselecting the first", async ({ page }) => {
   await page.goto("/?play=classic-easy");
   const board = await readBoard(page);

@@ -859,6 +859,10 @@ button:disabled {
   display: grid;
   place-items: center;
   cursor: pointer;
+  /* A long press must not raise the context menu or select text (both would cancel the hold). */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   transition: background-color 0.18s, filter 0.25s, opacity 0.25s;
 }
 
@@ -919,6 +923,60 @@ button:disabled {
 .cell.wrong .v {
   color: var(--bad);
   text-shadow: 0 0 14px var(--bad);
+}
+
+/* Long-press number wheel: a dot for each digit floats around the held square; a flick toward one
+   lights it, and letting go enters it. Lives in .board-wrap (above .board, which clips). */
+.radial {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 6;
+  pointer-events: none;
+  --r: 54px;
+}
+
+.radial-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--cell) * 0.64);
+  height: calc(var(--cell) * 0.64);
+  margin: calc(var(--cell) * -0.32);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: calc(var(--cell) * 0.42);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dc);
+  background: radial-gradient(circle, color-mix(in srgb, var(--dc) 24%, rgba(6, 10, 26, 0.94)), rgba(6, 10, 26, 0.94));
+  border: 1.5px solid color-mix(in srgb, var(--dc) 55%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  transform: translate(calc(var(--x) * var(--r)), calc(var(--y) * var(--r))) scale(0.2);
+  opacity: 0;
+  transition: transform 0.16s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.16s, background-color 0.16s, box-shadow 0.16s;
+}
+
+.radial.open .radial-dot {
+  opacity: 1;
+  transform: translate(calc(var(--x) * var(--r)), calc(var(--y) * var(--r))) scale(1);
+}
+
+.radial.open .radial-dot.on {
+  color: #04071a;
+  background: radial-gradient(circle, #fff, color-mix(in srgb, var(--dc) 70%, white));
+  border-color: #fff;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--dc) 85%, transparent), 0 0 5px var(--dc);
+  transform: translate(calc(var(--x) * var(--r)), calc(var(--y) * var(--r))) scale(1.34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radial-dot {
+    transition: opacity 0.12s, background-color 0.12s, box-shadow 0.12s;
+  }
 }
 
 .cell.wrong {

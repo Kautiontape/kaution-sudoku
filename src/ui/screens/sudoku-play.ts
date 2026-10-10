@@ -109,6 +109,19 @@ class SudokuPlay implements Screen {
       (c, e) => this.onCell(c, e),
       (cells) => this.onDragSelect(cells),
       (c) => this.onCellTap(c),
+      {
+        onOpen: () => {
+          sound.ui("open");
+          buzz("note");
+        },
+        onTick: (d) => {
+          if (d) {
+            sound.ui("select");
+            buzz("tap");
+          }
+        },
+        onPick: (c, d) => this.onRadialPick(c, d),
+      },
     );
     this.numpad = new Numpad({
       onDigit: (d, asNote) => {
@@ -381,6 +394,14 @@ class SudokuPlay implements Screen {
     this.selected = cells[cells.length - 1]!;
     sound.ui("select");
     this.render();
+  }
+
+  /** The long-press wheel landed on a digit: drop it into that square, as answer or note per mode. */
+  private onRadialPick(cell: CellId, digit: number): void {
+    this.peekDigit = 0;
+    this.multi = [];
+    this.selected = cell;
+    this.onDigit(digit, this.notesMode || this.shiftHeld);
   }
 
   /**

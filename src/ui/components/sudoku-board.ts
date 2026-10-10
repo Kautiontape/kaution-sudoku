@@ -15,6 +15,23 @@ import type { Stage } from "../fx/levels";
 import { DIGIT_COLORS } from "../palette";
 import { cagePath, colorCages } from "./cage-paths";
 import { Coords } from "./coords";
+import { Radial, radialPick } from "./radial";
+
+/** The long-press number wheel's callbacks. The board runs the gesture; the screen plays the sound
+ *  and turns a pick into a placement. */
+export interface RadialHandler {
+  /** The wheel opened over `cell`. */
+  onOpen?(cell: CellId): void;
+  /** The targeted digit changed (0 = none, back in the dead zone). */
+  onTick?(digit: number): void;
+  /** Released on a digit: drop it into `cell`. */
+  onPick(cell: CellId, digit: number): void;
+}
+
+/** How long an empty square is held before the number wheel opens (one knob — raise toward 3000 for
+ *  a more deliberate hold, lower for a snappier one). A long threshold is deliberate: it keeps a slow
+ *  tap and a press-then-drag from ever being mistaken for the wheel. */
+const RADIAL_HOLD_MS = 1500;
 
 export interface BoardView {
   grid: Uint8Array;
@@ -56,12 +73,14 @@ export class SudokuBoard {
   private hintRung = 0;
   private hintCand: Uint16Array | null = null;
   private last: BoardView | null = null;
+  private radialView: Radial | null = null;
 
   constructor(
     private puzzle: Puzzle,
     onSelect: (cell: CellId, e: PointerEvent) => void,
     onDragSelect?: (cells: CellId[]) => void,
     onTap?: (cell: CellId) => void,
+    radial?: RadialHandler,
   ) {
     const killer = puzzle.cages.length > 0;
     this.board = h("div", { class: `board${killer ? " killer" : ""}`, role: "grid", "aria-label": "Sudoku board", "data-testid": "board" });
@@ -139,49 +158,124 @@ export class SudokuBoard {
       });
     }
     this.el = h("div", { class: "board-wrap" }, this.board, this.svg, refSvg, sums, this.coords.el);
-    this.attachInput(onSelect, onDragSelect, onTap);
+    this.attachInput(onSelect, onDragSelect, onTap, radial);
   }
 
   /**
    * Press selects a cell; dragging across cells selects them all (for bulk notes). `onTap` fires on
    * release only if the press never left its cell, so starting a drag is never mistaken for a tap.
+   * Holding still on an empty square opens the number wheel: a flick toward a digit enters it.
    */
-  private attachInput(onSelect: (cell: CellId, e: PointerEvent) => void, onDragSelect?: (cells: CellId[]) => void, onTap?: (cell: CellId) => void): void {
+  private attachInput(
+    onSelect: (cell: CellId, e: PointerEvent) => void,
+    onDragSelect?: (cells: CellId[]) => void,
+    onTap?: (cell: CellId) => void,
+    radial?: RadialHandler,
+  ): void {
     let dragging: CellId[] | null = null;
     let pressed: CellId | null = null;
     let moved = false;
+    let longTimer = 0;
+    let radialCell: CellId | null = null;
+    let radialDigit = 0;
+    let pressX = 0;
+    let pressY = 0;
     const cellAt = (x: number, y: number): CellId | null => {
       const el = document.elementFromPoint(x, y)?.closest<HTMLElement>(".cell");
       return el && this.board.contains(el) ? Number(el.dataset.cell) : null;
     };
+
+    if (radial) {
+      this.radialView = new Radial();
+      this.el.append(this.radialView.el);
+    }
+
+    /** The wheel only opens where a digit can go: an empty, non-given square. */
+    const canRadial = (c: CellId): boolean => !!this.radialView && !!this.last && this.last.grid[c] === 0 && this.last.given[c] === 0;
+
+    const openRadial = (c: CellId): void => {
+      radialCell = c;
+      radialDigit = 0;
+      dragging = null; // drag-select steps aside
+      moved = true; // so release isn't read as a tap (which would repeat the last digit)
+      const rect = this.cellEls[c]!.getBoundingClientRect();
+      const wrap = this.el.getBoundingClientRect();
+      const size = rect.width;
+      const radius = size * 1.15;
+      // Keep the whole wheel on-screen near the edges. The pick still reads from the press point, so
+      // nudging the dots inward never changes which digit a flick lands on.
+      const reach = radius + size * 0.5;
+      const cx = Math.min(Math.max(rect.left + size / 2, reach), innerWidth - reach);
+      const cy = Math.min(Math.max(rect.top + size / 2, reach), innerHeight - reach);
+      this.radialView!.open(cx - wrap.left, cy - wrap.top, radius);
+      radial!.onOpen?.(c);
+    };
+
+    const closeRadial = (): void => {
+      if (radialCell === null) return;
+      this.radialView?.close();
+      radialCell = null;
+      radialDigit = 0;
+    };
+
     this.board.addEventListener("pointerdown", (e) => {
       const c = cellAt(e.clientX, e.clientY);
       if (c === null) return;
       pressed = c;
       moved = false;
+      pressX = e.clientX;
+      pressY = e.clientY;
       if (onDragSelect) {
         this.board.setPointerCapture?.(e.pointerId);
         dragging = [c];
       }
       onSelect(c, e);
+      // A bare hold (no modifier, so not an add-to-selection) over an empty square opens the wheel.
+      if (radial && !e.shiftKey && !e.ctrlKey && !e.metaKey && canRadial(c)) longTimer = window.setTimeout(() => openRadial(c), RADIAL_HOLD_MS);
     });
     this.board.addEventListener("pointermove", (e) => {
+      if (radialCell !== null) {
+        const digit = radialPick(e.clientX - pressX, e.clientY - pressY, this.cellSize() * 0.42);
+        if (digit !== radialDigit) {
+          radialDigit = digit;
+          this.radialView!.highlight(digit);
+          radial!.onTick?.(digit);
+        }
+        return;
+      }
       if (!dragging || !onDragSelect) return;
       const c = cellAt(e.clientX, e.clientY);
       if (c === null || dragging.includes(c)) return;
+      clearTimeout(longTimer); // moving onto another cell is a drag, not a hold
       moved = true;
       dragging.push(c);
       onDragSelect([...dragging]);
     });
     this.board.addEventListener("pointerup", () => {
+      clearTimeout(longTimer);
+      if (radialCell !== null) {
+        const c = radialCell;
+        const digit = radialDigit;
+        closeRadial();
+        dragging = null;
+        pressed = null;
+        moved = false;
+        if (digit > 0) radial!.onPick(c, digit);
+        return;
+      }
       if (pressed !== null && !moved) onTap?.(pressed);
       dragging = null;
       pressed = null;
     });
     this.board.addEventListener("pointercancel", () => {
+      clearTimeout(longTimer);
+      closeRadial();
       dragging = null;
       pressed = null;
     });
+    // A long touch on Android would otherwise raise the context menu or start a text selection
+    // (which arrives as a pointercancel and kills the hold).
+    this.board.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   cell(c: CellId): HTMLElement {
